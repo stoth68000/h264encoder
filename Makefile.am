@@ -4,6 +4,7 @@ SUBDIRS        = src
 EXTRA_DIST     = get-version autogen.sh
 DISTCLEANFILES = ChangeLog
 doc_DATA       = ChangeLog
+dist_doc_DATA  = README
 
 # Build changelog from git history
 .PHONY: ChangeLog
