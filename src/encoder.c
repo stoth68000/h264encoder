@@ -1743,7 +1743,7 @@ static int encode_YUY2_frame(unsigned char *frame)
 	} else
 		upload_yuv_to_surface(frame, src_surface[current_slot], 15 + current_frame_num, frame_width, frame_height);
 
-	if (encode_syncmode == 0 && (encode_thread == -1))
+	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
 		pthread_create(&encode_thread, NULL, storage_task_thread, NULL);
 
 	encoding2display_order(current_frame_encoding,
