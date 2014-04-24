@@ -28,7 +28,7 @@ static unsigned int measureElapsedMS(struct timeval *then)
  */
 static void ipcvideo_process_image(const void *p, ssize_t size)
 {
-	const size_t src_frame_size = ((ipcScreenW * 2) * ipcScreenH); /* YUY2 */
+	ssize_t src_frame_size = ((ipcScreenW * 2) * ipcScreenH); /* YUY2 */
 	if (size != src_frame_size) {
 		printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
 		return;
