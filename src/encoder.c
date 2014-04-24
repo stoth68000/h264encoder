@@ -1143,7 +1143,11 @@ static int render_sequence(void)
 
 		va_status =
 		    vaRenderPicture(va_dpy, context_id, &misc_param_tmpbuf, 1);
+
+		vaDestroyBuffer(va_dpy, misc_param_tmpbuf);
 	}
+	vaDestroyBuffer(va_dpy, seq_param_buf);
+	vaDestroyBuffer(va_dpy, rc_param_buf);
 
 	return 0;
 }
@@ -1237,6 +1241,8 @@ static int render_picture(void)
 	va_status = vaRenderPicture(va_dpy, context_id, &pic_param_buf, 1);
 	CHECK_VASTATUS(va_status, "vaRenderPicture");
 
+	vaDestroyBuffer(va_dpy, pic_param_buf);
+
 	return 0;
 }
 
@@ -1276,6 +1282,9 @@ static int render_packedsequence(void)
 
 	free(packedseq_buffer);
 
+	vaDestroyBuffer(va_dpy, packedseq_para_bufid);
+	vaDestroyBuffer(va_dpy, packedseq_data_bufid);
+
 	return 0;
 }
 
@@ -1313,6 +1322,9 @@ static int render_packedpicture(void)
 	CHECK_VASTATUS(va_status, "vaRenderPicture");
 
 	free(packedpic_buffer);
+
+	vaDestroyBuffer(va_dpy, packedpic_para_bufid);
+	vaDestroyBuffer(va_dpy, packedpic_data_bufid);
 
 	return 0;
 }
@@ -1378,6 +1390,9 @@ static void render_packedsei(void)
 
 	free(packed_sei_buffer);
 
+	vaDestroyBuffer(va_dpy, packed_sei_header_param_buf_id);
+	vaDestroyBuffer(va_dpy, packed_sei_buf_id);
+
 	return;
 }
 
@@ -1412,6 +1427,8 @@ static int render_hrd(void)
 	va_status =
 	    vaRenderPicture(va_dpy, context_id, &misc_parameter_hrd_buf_id, 1);
 	CHECK_VASTATUS(va_status, "vaRenderPicture");;
+
+	vaDestroyBuffer(va_dpy, misc_parameter_hrd_buf_id);
 
 	return 0;
 }
@@ -1481,6 +1498,8 @@ static int render_slice(void)
 
 	va_status = vaRenderPicture(va_dpy, context_id, &slice_param_buf, 1);
 	CHECK_VASTATUS(va_status, "vaRenderPicture");
+
+	vaDestroyBuffer(va_dpy, slice_param_buf);
 
 	return 0;
 }
