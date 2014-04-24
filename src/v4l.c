@@ -74,7 +74,7 @@ static int xioctl(int fd, int request, void *arg)
  */
 static void v4l_process_image(const void *p, ssize_t size)
 {
-	const size_t src_frame_size = ((width * 2) * height);
+	ssize_t src_frame_size = ((width * 2) * height);
 	if (size != src_frame_size) {
 		printf("wrong buffer size: %zu expect %zu\n", size,
 		       src_frame_size);
