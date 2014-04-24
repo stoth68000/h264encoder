@@ -54,6 +54,8 @@ extern char *encoder_nalOutputFilename;
 
 #include "loadsurface.h"
 
+#define VAEntrypointMax		10
+
 #define NAL_REF_IDC_NONE        0
 #define NAL_REF_IDC_LOW         1
 #define NAL_REF_IDC_MEDIUM      2
