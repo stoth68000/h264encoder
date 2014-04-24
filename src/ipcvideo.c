@@ -100,6 +100,10 @@ void ipcvideo_mainloop(void)
 
 		lastBuffer = buf;
 	}
+	if (lastBuffer) {
+		/* pop the used frame back on the free list, else we lose it on closedown. */
+		ipcvideo_list_free_enqueue(ctx, lastBuffer);
+	}
 }
 
 void ipcvideo_stop_capturing(void)
