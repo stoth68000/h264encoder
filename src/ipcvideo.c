@@ -43,7 +43,7 @@ void ipcvideo_mainloop(void)
 	struct ipcvideo_buffer_s *buf = 0, *lastBuffer = 0;
 	unsigned char *pixels;
 	unsigned int length;
-	unsigned int elapsedms;
+	int elapsedms;
 	int ret;
 
 	while (!time_to_quit) {
