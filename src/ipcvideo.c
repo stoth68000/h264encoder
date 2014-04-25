@@ -5,12 +5,11 @@
 #include "encoder.h"
 #include "main.h"
 
-static int ipcScreenW = 0;
-static int ipcScreenH = 0;
 static int ipcFPS = 30;
 static int ipcResubmitTimeoutMS = 0;
 
 static struct ipcvideo_s *ctx = 0;
+static struct ipcvideo_dimensions_s ipc_dimensions;
 
 static unsigned int measureElapsedMS(struct timeval *then)
 {
@@ -28,7 +27,7 @@ static unsigned int measureElapsedMS(struct timeval *then)
  */
 static void ipcvideo_process_image(const void *p, ssize_t size)
 {
-	ssize_t src_frame_size = ((ipcScreenW * 2) * ipcScreenH); /* YUY2 */
+	ssize_t src_frame_size = ((ipc_dimensions.width * 2) * ipc_dimensions.height); /* YUY2 */
 	if (size != src_frame_size) {
 		printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
 		return;
@@ -123,16 +122,19 @@ void ipcvideo_uninit_device(void)
 	}
 }
 
-void ipcvideo_init_device(int width, int height, int fps)
+void ipcvideo_init_device(int *width, int *height, int fps)
 {
-	ipcScreenW = width;
-	ipcScreenH = height;
+	*width = ipc_dimensions.width;
+	*height = ipc_dimensions.height;
 	ipcFPS = fps;
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
 	/* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
 	ipcResubmitTimeoutMS = (1000 / ipcFPS) + 3;
-	printf("%s(%d, %d, %d timeout=%d)\n", __func__, ipcScreenW, ipcScreenH, ipcFPS, ipcResubmitTimeoutMS);
+	printf("%s(%d, %d, %d timeout=%d)\n", __func__,
+		ipc_dimensions.width,
+		ipc_dimensions.height,
+		ipcFPS, ipcResubmitTimeoutMS);
 }
 
 void ipcvideo_close_device(void)
@@ -157,15 +159,16 @@ void ipcvideo_open_device()
 	ipcvideo_dump_context(ctx);
 
 	/* Attach to a segment, get its working dimensions */
-	struct ipcvideo_dimensions_s d;
-	ret = ipcvideo_context_attach(ctx, 1999, "/tmp", &d);
+	ret = ipcvideo_context_attach(ctx, 1999, "/tmp", &ipc_dimensions);
 	if (KLAPI_FAILED(ret)) {
 		printf("Unable to attach to segment, aborting.\n");
 		return;
 	}
 
 	printf("Attached to ipcvideo segment, dimensions %dx%d fourcc: %08x\n",
-		d.width, d.height, d.fourcc);
+		ipc_dimensions.width,
+		ipc_dimensions.height,
+		ipc_dimensions.fourcc);
 
 	ipcvideo_dump_context(ctx);
 	ipcvideo_dump_metadata(ctx);

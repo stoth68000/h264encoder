@@ -161,7 +161,9 @@ int main(int argc, char **argv)
 		ipcvideo_open_device();
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 30;
-		ipcvideo_init_device(width, height, g_V4LFrameRate);
+
+		/* Init the ipc video pipe and extract resolution details */
+		ipcvideo_init_device(&width, &height, g_V4LFrameRate);
 	}
 
 	printf("Using frame resolution: %dx%d\n", width, height);
