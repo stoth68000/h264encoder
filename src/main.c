@@ -158,7 +158,10 @@ int main(int argc, char **argv)
 			g_V4LFrameRate = 60;
 	}
 	if (capturemode == CM_IPCVIDEO) {
-		ipcvideo_open_device();
+		if (ipcvideo_open_device() < 0) {
+			printf("Error: IPCVIDEO pipeline producer is not running\n");
+			goto encoder_failed;
+		}
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 30;
 

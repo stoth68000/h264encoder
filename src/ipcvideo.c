@@ -148,12 +148,12 @@ void ipcvideo_close_device(void)
 	ipcvideo_dump_context(ctx);
 }
 
-void ipcvideo_open_device()
+int ipcvideo_open_device()
 {
 	int ret = ipcvideo_context_create(&ctx);
 	if (KLAPI_FAILED(ret)) {
 		printf("Failed to create a context\n");
-		return;
+		return -1;
 	}
 
 	ipcvideo_dump_context(ctx);
@@ -162,7 +162,7 @@ void ipcvideo_open_device()
 	ret = ipcvideo_context_attach(ctx, 1999, "/tmp", &ipc_dimensions);
 	if (KLAPI_FAILED(ret)) {
 		printf("Unable to attach to segment, aborting.\n");
-		return;
+		return -1;
 	}
 
 	printf("Attached to ipcvideo segment, dimensions %dx%d fourcc: %08x\n",
@@ -173,5 +173,7 @@ void ipcvideo_open_device()
 	ipcvideo_dump_context(ctx);
 	ipcvideo_dump_metadata(ctx);
 	ipcvideo_dump_buffers(ctx);
+
+	return 0;
 }
 
