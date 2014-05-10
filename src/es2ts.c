@@ -102,8 +102,6 @@ static int es2ts_sendTSBufferAsRTP(unsigned char *tsbuf, int len)
 /* Callbacks are guaranteed to be exact multiples of 188 bytes */
 int downstream_callback(struct es2ts_context_s *ctx, unsigned char *buf, int len)
 {
-	printf("%s(%p, %p, %d)\n", __func__, ctx, buf, len);
-
 	if (len % 188) {
 		printf("%s(%p, %p, bytes %d) [ %02x %02x %02x %02x] %d/%d\n",
 			__func__, ctx, buf, len,
@@ -184,8 +182,10 @@ void freeESHandler()
 
 	printf("Process ending\n");
 	int ret = es2ts_process_end(es2ts_ctx);
-	if (ES2TS_FAILED(ret))
+	if (ES2TS_FAILED(ret)) {
+		fprintf(stderr, "%s() failed to terminate\n", __func__);
 		return;
+	}
 
 	printf("Process ended\n");
 	es2ts_callback_unregister(es2ts_ctx);
