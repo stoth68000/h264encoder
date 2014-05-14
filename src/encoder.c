@@ -1234,7 +1234,7 @@ static int setup_encode()
 	memcpy(tmp_surfaceid + SURFACE_NUM, ref_surface,
 	       SURFACE_NUM * sizeof(VASurfaceID));
 
-	/* Create a context for this encode pipe */
+	/* Create a context for this encode pipe, reference all the src and ref surfaces */
 	va_status = vaCreateContext(va_dpy, config_id,
 				    frame_width_mbaligned,
 				    frame_height_mbaligned, VA_PROGRESSIVE,
@@ -1971,6 +1971,7 @@ static void *storage_task_thread(void *t)
 	return 0;
 }
 
+/* Map a surface, shift the inbuf pixels into it */
 static void upload_yuv_to_surface(unsigned char *inbuf, VASurfaceID surface_id,
 				  unsigned int frame, int picture_width,
 				  int picture_height)
@@ -2088,6 +2089,7 @@ static int encode_YUY2_frame(unsigned char *frame)
 	} else
 		upload_yuv_to_surface(frame, src_surface[current_slot], 15 + current_frame_num, frame_width, frame_height);
 
+	/* Once only - Create the encoding thread */
 	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
 		pthread_create(&encode_thread, NULL, storage_task_thread, NULL);
 
@@ -2108,7 +2110,7 @@ static int encode_YUY2_frame(unsigned char *frame)
 		current_IDR_display = current_frame_display;
 	}
 
-	/* check if the source frame is ready */
+	/* Wait for the current surface to become ready */
 	while (srcsurface_status[current_slot] != SRC_SURFACE_IN_ENCODING) {
 		usleep(1);
 	}
