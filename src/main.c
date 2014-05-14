@@ -46,7 +46,7 @@ static void usage(int argc, char **argv)
 	       "-W, --dev-width=WIDTH    Device width [720]\n"
 	       "-H, --dev-height=HEIGHT  Device height [480]\n"
 	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe\n"
-
+	       "-D, --vppdeinterlace=NUM 0=off 1=motionadaptive 2=bob\n"
 	       );
 }
 
@@ -69,7 +69,7 @@ static const struct option long_options[] = {
 	{ "dev-width", required_argument, NULL, 'W' },
 	{ "dev-height", required_argument, NULL, 'H' },
 	{ "mode", required_argument, NULL, 'M' },
-	{ "pngpath", required_argument, NULL, 'D' },
+	{ "vppdeinterlace", required_argument, NULL, 'D' },
 	{ 0, 0, 0, 0}
 };
 
@@ -78,6 +78,8 @@ int main(int argc, char **argv)
 	char *ipaddress = "192.168.0.67";
 	int ipport = 0;
 	int videoinputnr = 0;
+	int enable_osd = 0;
+	int deinterlace = 0;
 	v4l_dev_name = (char *)"/dev/video0";
 
 	for (;;) {
@@ -117,6 +119,13 @@ int main(int argc, char **argv)
 				exit(0);
 			}
 			break;
+		case 'D':
+			deinterlace = atoi(optarg);
+			if (deinterlace > 2) {
+				usage(argc, argv);
+				exit(0);
+			}
+			break;
 		case 'o':
 			encoder_nalOutputFilename = optarg;
 			break;
@@ -142,6 +151,9 @@ int main(int argc, char **argv)
 			break;
 		case 'H':
 			height = atoi(optarg);
+			break;
+		case 'Z':
+			enable_osd = atoi(optarg);
 			break;
 		default:
 			usage(argc, argv);
@@ -185,10 +197,16 @@ int main(int argc, char **argv)
 		/* Init the ipc video pipe and extract resolution details */
 		ipcvideo_init_device(&width, &height, g_V4LFrameRate);
 	}
+	if (capturemode == CM_FIXED) {
+		fixed_open_device();
+		if (g_V4LFrameRate == 0)
+			g_V4LFrameRate = 30;
+		fixed_init_device(&width, &height, g_V4LFrameRate);
+	}
 
 	printf("Using frame resolution: %dx%d\n", width, height);
 
-	if (encoder_init(width, height)) {
+	if (encoder_init(width, height, enable_osd, deinterlace)) {
 		printf("Error: Encoder init failed\n");
 		goto encoder_failed;
 	}
@@ -204,7 +222,8 @@ int main(int argc, char **argv)
 #endif
 
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
-	if ((capturemode == CM_IPCVIDEO) && ipport && (initESHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0)) {
+	if (((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) || (capturemode == CM_FIXED)) &&
+		ipport && (initESHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0)) {
 		printf("Error: ES2TS init failed\n");
 		goto rtp_failed;
 	}
@@ -219,6 +238,12 @@ int main(int argc, char **argv)
 		ipcvideo_start_capturing();
 		ipcvideo_mainloop();
 		ipcvideo_stop_capturing();
+	}
+
+	if (capturemode == CM_FIXED) {
+		fixed_start_capturing();
+		fixed_mainloop();
+		fixed_stop_capturing();
 	}
 
 	encoder_close();
@@ -237,6 +262,10 @@ encoder_failed:
 	if (capturemode == CM_IPCVIDEO) {
 		ipcvideo_uninit_device();
 		ipcvideo_close_device();
+	}
+	if (capturemode == CM_FIXED) {
+		fixed_uninit_device();
+		fixed_close_device();
 	}
 
 	return 0;

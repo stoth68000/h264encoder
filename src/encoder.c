@@ -37,6 +37,10 @@
 #include <math.h>
 #include <time.h>
 #include <va/va.h>
+#define VPP 1
+#if VPP
+#include <va/va_vpp.h>
+#endif
 #include <va/va_enc_h264.h>
 #include <libyuv.h>
 
@@ -100,6 +104,22 @@ static VAEncPictureParameterBufferH264 pic_param;
 static VAEncSliceParameterBufferH264 slice_param;
 static VAPictureH264 CurrentCurrPic;
 static VAPictureH264 ReferenceFrames[16], RefPicList0_P[32], RefPicList0_B[32], RefPicList1_B[32];
+
+#if VPP
+static VABufferID vpp_filter_bufs[VAProcFilterCount];
+static unsigned int vpp_num_filter_bufs = 0;
+static VAConfigID vpp_config = VA_INVALID_ID;
+static VAContextID vpp_context = VA_INVALID_ID;
+static VAProcPipelineCaps vpp_pipeline_caps;
+static VASurfaceID *vpp_forward_references;
+static unsigned int vpp_num_forward_references;
+static VASurfaceID *vpp_backward_references;
+static unsigned int vpp_num_backward_references;
+static unsigned int vpp_deinterlace_mode; /* 0 = off, 1 = ma, 2 = bob */
+static VARectangle vpp_output_region;
+static VABufferID vpp_pipeline_buf;
+static VAProcPipelineParameterBuffer *vpp_pipeline_param;
+#endif
 
 static unsigned int MaxFrameNum = (2 << 16);
 static unsigned int MaxPicOrderCntLsb = (2 << 8);
@@ -682,6 +702,293 @@ int string_to_rc(char *str)
 	}
 	return rc_mode;
 }
+
+#if VPP
+static char * vpp_filter_string(VAProcFilterType filter)
+{
+	switch (filter) {
+	case VAProcFilterNone:return "VAProcFilterNone";
+	case VAProcFilterNoiseReduction:return "VAProcFilterNoiseReduction";
+	case VAProcFilterDeinterlacing:return "VAProcFilterDeinterlacing";
+	case VAProcFilterSharpening:return "VAProcFilterSharpening";
+	case VAProcFilterColorBalance:return "VAProcFilterColorBalance";
+	default:
+		break;
+	}
+	return "<unknown filter>";
+}
+
+static char * vpp_deinterlace_string(VAProcDeinterlacingType deinterlace)
+{
+	switch (deinterlace) {
+	case VAProcDeinterlacingNone:return "VAProcDeinterlacingNone";
+	case VAProcDeinterlacingBob:return "VAProcDeinterlacingBob";
+	case VAProcDeinterlacingWeave:return "VAProcDeinterlacingWeave";
+	case VAProcDeinterlacingMotionAdaptive:return "VAProcDeinterlacingMotionAdaptive";
+	case VAProcDeinterlacingMotionCompensated:return "VAProcDeinterlacingMotionCompensated";
+	default:
+		break;
+	}
+	return "<unknown deinterlace capability>";
+}
+
+/* Display all supported VPP deinterlaced modes to console */
+static void vpp_enumerate_deinterlace(VADisplay va_dpy)
+{
+	VAProcFilterType filters[VAProcFilterCount];
+	unsigned int num_filters = VAProcFilterCount;
+	VAStatus va_status;
+	unsigned int i, j;
+
+	va_status = vaQueryVideoProcFilters(va_dpy, vpp_context, &filters[0], &num_filters);
+	CHECK_VASTATUS(va_status, "vaQueryVideoProcFilters");
+
+	for (i = 0; i < num_filters; i++) {
+		printf("%s\n", vpp_filter_string(filters[i]));
+		if (filters[i] == VAProcFilterDeinterlacing) {
+			VAProcDeinterlacingType deinterlacing_caps[VAProcDeinterlacingCount];
+			unsigned int num_deinterlacing_caps = VAProcDeinterlacingCount;
+
+			vaQueryVideoProcFilterCaps(va_dpy, vpp_context,
+				VAProcFilterDeinterlacing, &deinterlacing_caps, &num_deinterlacing_caps);
+			for (j = 0; j < num_deinterlacing_caps; j++) {
+				printf("\t%s\n", vpp_deinterlace_string(deinterlacing_caps[j]));
+			}
+		}
+	}
+}
+
+/* Confirm if a specific VPP deinterlace mode is supported */
+static int vpp_supports_deinterlace(VADisplay va_dpy, VAProcDeinterlacingType dtype)
+{
+	VAProcFilterType filters[VAProcFilterCount];
+	unsigned int num_filters = VAProcFilterCount;
+	VAStatus va_status;
+	unsigned int i, j;
+	unsigned int found = 0;
+
+	va_status = vaQueryVideoProcFilters(va_dpy, vpp_context, &filters[0], &num_filters);
+	CHECK_VASTATUS(va_status, "vaQueryVideoProcFilters");
+
+	for (i = 0; i < num_filters; i++) {
+		printf("%s\n", vpp_filter_string(filters[i]));
+		if (filters[i] == VAProcFilterDeinterlacing) {
+			VAProcDeinterlacingType deinterlacing_caps[VAProcDeinterlacingCount];
+			unsigned int num_deinterlacing_caps = VAProcDeinterlacingCount;
+
+			vaQueryVideoProcFilterCaps(va_dpy, vpp_context,
+				VAProcFilterDeinterlacing, &deinterlacing_caps, &num_deinterlacing_caps);
+			for (j = 0; j < num_deinterlacing_caps; j++) {
+				if (deinterlacing_caps[j] == dtype)
+					found = 1;
+			}
+		}
+	}
+
+	return found;
+}
+
+#if 1
+static int vpp_perform_deinterlace(VASurfaceID surface, unsigned int w, unsigned int h, VASurfaceID forward_reference)
+{
+	VAStatus va_status;
+
+	vaBeginPicture(va_dpy, vpp_context, surface);
+
+	va_status = vaMapBuffer(va_dpy, vpp_pipeline_buf, (void *)&vpp_pipeline_param);
+	CHECK_VASTATUS(va_status, "vaMapBuffer");
+	vpp_pipeline_param->surface              = surface;
+	vpp_pipeline_param->surface_region       = NULL;
+	vpp_pipeline_param->output_region        = &vpp_output_region;
+	vpp_pipeline_param->output_background_color = 0;
+	vpp_pipeline_param->filter_flags         = VA_FILTER_SCALING_HQ;
+	vpp_pipeline_param->filters              = vpp_filter_bufs;
+	vpp_pipeline_param->num_filters          = vpp_num_filter_bufs;
+	va_status = vaUnmapBuffer(va_dpy, vpp_pipeline_buf);
+	CHECK_VASTATUS(va_status, "vaUnmapBuffer");
+
+	// Update reference frames for deinterlacing, if necessary
+	vpp_forward_references[0] = forward_reference;
+	vpp_pipeline_param->forward_references      = vpp_forward_references;
+	vpp_pipeline_param->num_forward_references  = vpp_num_forward_references;
+	vpp_pipeline_param->backward_references     = vpp_backward_references;
+	vpp_pipeline_param->num_backward_references = vpp_num_backward_references;
+
+	// Apply filters
+	va_status = vaRenderPicture(va_dpy, vpp_context, &vpp_pipeline_buf, 1);
+	CHECK_VASTATUS(va_status, "vaRenderPicture");
+
+	vaEndPicture(va_dpy, vpp_context);
+
+	return 0;
+}
+#else
+static int vpp_perform_deinterlace(VASurfaceID surface, unsigned int w, unsigned int h, VASurfaceID forward_reference)
+{
+	VAStatus va_status;
+
+	vaBeginPicture(va_dpy, vpp_context, surface);
+
+	VARectangle output_region;
+	VABufferID pipeline_buf;
+	VAProcPipelineParameterBuffer *pipeline_param;
+
+	va_status = vaCreateBuffer(va_dpy, vpp_context,
+		VAProcPipelineParameterBufferType, sizeof(*pipeline_param), 1,
+		NULL, &pipeline_buf);
+	CHECK_VASTATUS(va_status, "vaCreateBuffer");
+
+	// Setup output region for this surface
+	// e.g. upper left corner for the first surface
+	output_region.x      = 0;
+	output_region.y      = 0;
+	output_region.width  = w;
+	output_region.height = h;
+
+	va_status = vaMapBuffer(va_dpy, pipeline_buf, (void *)&pipeline_param);
+	CHECK_VASTATUS(va_status, "vaMapBuffer");
+	pipeline_param->surface              = surface;
+	pipeline_param->surface_region       = NULL;
+	pipeline_param->output_region        = &output_region;
+	pipeline_param->output_background_color = 0;
+	pipeline_param->filter_flags         = VA_FILTER_SCALING_HQ;
+	pipeline_param->filters              = vpp_filter_bufs;
+	pipeline_param->num_filters          = vpp_num_filter_bufs;
+	va_status = vaUnmapBuffer(va_dpy, pipeline_buf);
+	CHECK_VASTATUS(va_status, "vaUnmapBuffer");
+
+	// Update reference frames for deinterlacing, if necessary
+	vpp_forward_references[0] = forward_reference;
+	pipeline_param->forward_references      = vpp_forward_references;
+	pipeline_param->num_forward_references  = vpp_num_forward_references;
+	pipeline_param->backward_references     = vpp_backward_references;
+	pipeline_param->num_backward_references = vpp_num_backward_references;
+
+	// Apply filters
+	va_status = vaRenderPicture(va_dpy, vpp_context, &pipeline_buf, 1);
+	CHECK_VASTATUS(va_status, "vaRenderPicture");
+
+	vaEndPicture(va_dpy, vpp_context);
+
+	vaDestroyBuffer(va_dpy, pipeline_buf);
+
+	return 0;
+}
+#endif
+
+static void deinit_vpp()
+{
+	for (unsigned int i = 0; i < vpp_num_filter_bufs; i++) {
+		vaDestroyBuffer(va_dpy, vpp_filter_bufs[i]);
+		vpp_filter_bufs[i] = VA_INVALID_ID;
+	}
+
+	vaDestroyBuffer(va_dpy, vpp_pipeline_buf);
+
+	if (vpp_context != VA_INVALID_ID)
+		vaDestroyContext(va_dpy, vpp_context);
+	if (vpp_config != VA_INVALID_ID)
+		vaDestroyConfig(va_dpy, vpp_config);
+
+	vpp_context = VA_INVALID_ID;
+	vpp_config = VA_INVALID_ID;
+}
+
+/* Initialize VPP, create the VPP deinterlacer processing pipeline */
+static int init_vpp()
+{
+	VAEntrypoint entrypoints[VAEntrypointMax] = { 0 };
+	int i, num_entrypoints, supportsVideoProcessing = 0;
+	VAStatus va_status;
+
+	vaQueryConfigEntrypoints(va_dpy, VAProfileNone, entrypoints, &num_entrypoints);
+
+	for (i = 0; !supportsVideoProcessing && i < num_entrypoints; i++) {
+		if (entrypoints[i] == VAEntrypointVideoProc)
+			supportsVideoProcessing = 1;
+	}
+
+	printf("Platform supports LIBVA VideoPostProcessing? : %s\n", supportsVideoProcessing ? "True" : "False");
+	if (!supportsVideoProcessing || (vpp_deinterlace_mode == 0))
+		return -1;
+
+	/* one-time - Config/context creation for VPP interaction */
+	for (int i = 0; i < VAProcFilterCount; i++) {
+		vpp_filter_bufs[i] = VA_INVALID_ID;
+	}
+
+        vpp_config = VA_INVALID_ID;
+	va_status = vaCreateConfig(va_dpy, VAProfileNone, VAEntrypointVideoProc, NULL, 0, &vpp_config);
+	CHECK_VASTATUS(va_status, "vaCreateConfig");
+
+	vpp_context = VA_INVALID_ID;
+	va_status = vaCreateContext(va_dpy, vpp_config, 0, 0, 0, NULL, 0, &vpp_context);
+	CHECK_VASTATUS(va_status, "vaCreateContext");
+
+	/* Show all supported deinterlace modes */
+	vpp_enumerate_deinterlace(va_dpy);
+
+	/* Check for our preferred mode */
+	VAProcDeinterlacingType deint_mode = VAProcDeinterlacingNone;
+	if ((vpp_deinterlace_mode == 1) && vpp_supports_deinterlace(va_dpy, VAProcDeinterlacingMotionAdaptive)) {
+		printf("Yay, motion adaptive!\n");
+		deint_mode = VAProcDeinterlacingMotionAdaptive;
+	} else 
+	if ((vpp_deinterlace_mode == 2) && vpp_supports_deinterlace(va_dpy, VAProcDeinterlacingBob)) {
+		printf("boo, bob support!\n");
+		deint_mode = VAProcDeinterlacingBob;
+	}
+
+	if (deint_mode != VAProcDeinterlacingNone) {
+
+		/* Create a VPP Deinterlace pipeline */
+		VABufferID deint_filter = VA_INVALID_ID;
+		VAProcFilterParameterBufferDeinterlacing deint;
+		deint.type = VAProcFilterDeinterlacing;
+		deint.algorithm = deint_mode;
+		va_status = vaCreateBuffer(va_dpy, vpp_context, VAProcFilterParameterBufferType, sizeof(deint), 1, &deint, &deint_filter);
+		CHECK_VASTATUS(va_status, "vaCreateBuffer");
+
+		vpp_filter_bufs[vpp_num_filter_bufs++] = deint_filter;
+
+		// Create filters
+		//VAProcColorStandardType in_color_standards[VAProcColorStandardCount];
+		//VAProcColorStandardType out_color_standards[VAProcColorStandardCount];
+
+		vpp_pipeline_caps.input_color_standards      = NULL;
+		//pipeline_caps.num_input_color_standards  = ARRAY_ELEMS(in_color_standards);
+		vpp_pipeline_caps.num_input_color_standards  = 0;
+		vpp_pipeline_caps.output_color_standards     = NULL;
+		//pipeline_caps.num_output_color_standards = ARRAY_ELEMS(out_color_standards);
+		vpp_pipeline_caps.num_output_color_standards = 0;
+		vaQueryVideoProcPipelineCaps(va_dpy, vpp_context,
+				vpp_filter_bufs, vpp_num_filter_bufs,
+				&vpp_pipeline_caps);
+
+		vpp_num_forward_references  = vpp_pipeline_caps.num_forward_references;
+		vpp_forward_references      = malloc(vpp_num_forward_references * sizeof(VASurfaceID));
+		vpp_num_backward_references = vpp_pipeline_caps.num_backward_references;
+		vpp_backward_references     = malloc(vpp_num_backward_references * sizeof(VASurfaceID));
+
+		printf("vpp_num_forward_references = %d\n", vpp_num_forward_references);
+		printf("vpp_num_backward_references = %d\n", vpp_num_backward_references);
+	}
+
+	va_status = vaCreateBuffer(va_dpy, vpp_context,
+		VAProcPipelineParameterBufferType, sizeof(*vpp_pipeline_param), 1,
+		NULL, &vpp_pipeline_buf);
+	CHECK_VASTATUS(va_status, "vaCreateBuffer");
+
+	// Setup output region for this surface
+	// e.g. upper left corner for the first surface
+	vpp_output_region.x      = 0;
+	vpp_output_region.y      = 0;
+	vpp_output_region.width  = frame_width;
+	vpp_output_region.height = frame_height;
+
+	return 0;
+}
+#endif
 
 static int init_va(void)
 {
@@ -1753,6 +2060,18 @@ static void upload_yuv_to_surface(unsigned char *inbuf, VASurfaceID surface_id,
 	CHECK_VASTATUS(va_status, "vaDestroyImage");
 }
 
+#if VPP
+static int prior_slot(void)
+{
+	int slot = current_frame_display % SURFACE_NUM;
+	slot -= 1;
+	if (slot < 0)
+		slot = SURFACE_NUM + slot;
+
+	return slot;
+}
+#endif
+
 static int encode_YUY2_frame(unsigned char *frame)
 {
 	unsigned int i;
@@ -1771,6 +2090,11 @@ static int encode_YUY2_frame(unsigned char *frame)
 
 	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
 		pthread_create(&encode_thread, NULL, storage_task_thread, NULL);
+
+#if VPP
+	if (vpp_deinterlace_mode > 0)
+		vpp_perform_deinterlace(src_surface[current_slot], frame_width, frame_height, src_surface[prior_slot()]);
+#endif
 
 	encoding2display_order(current_frame_encoding,
 			       intra_period,
@@ -1847,6 +2171,9 @@ static int release_encode()
 
 static int deinit_va()
 {
+#if VPP
+	deinit_vpp();
+#endif
 	vaTerminate(va_dpy);
 
 	va_close_display(va_dpy);
@@ -1874,7 +2201,7 @@ static int print_input()
 	return 0;
 }
 
-int encoder_init(int width, int height, int osd)
+int encoder_init(int width, int height, int osd, int deinterlacemode)
 {
 	printf("%s(%d, %d)\n", __func__, width, height);
 
@@ -1882,7 +2209,10 @@ int encoder_init(int width, int height, int osd)
 	frame_height = height;
 	frame_rate = 30;
 	h264_profile = VAProfileH264High;
-
+	intra_idr_period = frame_rate;
+#if VPP
+	vpp_deinterlace_mode = deinterlacemode;
+#endif
 	current_frame_encoding = 0;
 	encode_syncmode = 0;
 
@@ -1921,6 +2251,9 @@ int encoder_init(int width, int height, int osd)
 	print_input();
 
 	init_va();
+#if VPP
+	init_vpp();
+#endif
 	setup_encode();
 	return 0;
 }
