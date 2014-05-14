@@ -42,7 +42,6 @@
 #include <va/va_vpp.h>
 #endif
 #include <va/va_enc_h264.h>
-#include <libyuv.h>
 
 #include "es2ts.h"
 #include "rtp.h"

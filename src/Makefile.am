@@ -10,7 +10,7 @@ h264encoder_CFLAGS = \
 	@LIBIPCVIDEO_CFLAGS@ \
 	@X11_CFLAGS@
 h264encoder_LDADD = \
-	-lm -lyuv \
+	-lm \
 	@PTHREAD_LIBS@ \
 	@LIBVA_LIBS@ \
 	@LIBAV_LIBS@ \
