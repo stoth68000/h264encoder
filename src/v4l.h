@@ -20,7 +20,7 @@ void v4l_mainloop(void);
 void stop_v4l_capturing(void);
 void start_v4l_capturing(void);
 void uninit_v4l_device(void);
-void init_v4l_device(void);
+void init_v4l_device(int inputnr);
 void close_v4l_device(void);
 void open_v4l_device(void);
 

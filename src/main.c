@@ -40,13 +40,14 @@ static void usage(int argc, char **argv)
 	       "-p, --ipport=9999        Remote IP RTP port\n"
 	       "-f, --v4lframerate=FPS   Framerate [no limit]\n"
 	       "-n, --v4lnumerator=NUM   Numerator [no limit]\n"
+	       "-I, --v4linput=nr        Select video inputnr #N on video device [0]\n"
 	       "-W, --dev-width=WIDTH    Device width [720]\n"
 	       "-H, --dev-height=HEIGHT  Device height [480]\n"
 	       "-M, --mode=NUM           0=v4l 1=ipcvideo\n"
 	       );
 }
 
-static const char short_options[] = "b:d:i:o:p:?mruD:Pf:n:W:H:M:";
+static const char short_options[] = "b:d:i:o:p:?mruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
 	{ "bitrate", required_argument, NULL, 'b' },
@@ -61,6 +62,7 @@ static const struct option long_options[] = {
 	{ "progressive", no_argument, NULL, 'P' },
 	{ "v4lframerate", required_argument, NULL, 'f' },
 	{ "v4lnumerator", required_argument, NULL, 'n' },
+	{ "v4linput", required_argument, NULL, 'I' },
 	{ "dev-width", required_argument, NULL, 'W' },
 	{ "dev-height", required_argument, NULL, 'H' },
 	{ "mode", required_argument, NULL, 'M' },
@@ -72,6 +74,7 @@ int main(int argc, char **argv)
 {
 	char *ipaddress = "192.168.0.67";
 	int ipport = 0;
+	int videoinputnr = 0;
 	v4l_dev_name = (char *)"/dev/video0";
 
 	for (;;) {
@@ -97,6 +100,9 @@ int main(int argc, char **argv)
 			exit(0);
 		case 'i':
 			ipaddress = optarg;
+			break;
+		case 'I':
+			videoinputnr = atoi(optarg);
 			break;
 		case 'm':
 			io = IO_METHOD_MMAP;
@@ -153,7 +159,7 @@ int main(int argc, char **argv)
 
 	if (capturemode == CM_V4L) {
 		open_v4l_device();
-		init_v4l_device();
+		init_v4l_device(videoinputnr);
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 60;
 	}

@@ -409,7 +409,7 @@ static void init_userp(unsigned int buffer_size)
 	}
 }
 
-void init_v4l_device(void)
+void init_v4l_device(int inputnr)
 {
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
@@ -429,6 +429,11 @@ void init_v4l_device(void)
 
 	if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
 		printf(" is no video capture device\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (-1 == xioctl(fd, VIDIOC_S_INPUT, &inputnr)) {
+		printf(" set input failed\n");
 		exit(EXIT_FAILURE);
 	}
 
