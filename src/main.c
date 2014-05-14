@@ -7,6 +7,7 @@
 #include "rtp.h"
 #include "v4l.h"
 #include "ipcvideo.h"
+#include "fixed.h"
 #include "encoder.h"
 #include "es2ts.h"
 #include "main.h"
@@ -16,7 +17,8 @@
 /* main.c */
 #define CM_V4L		0
 #define CM_IPCVIDEO	1
-#define CM_MAX		CM_IPCVIDEO
+#define CM_FIXED	2
+#define CM_MAX		CM_FIXED
 
 unsigned int capturemode = CM_V4L;
 int time_to_quit = 0;
@@ -43,7 +45,8 @@ static void usage(int argc, char **argv)
 	       "-I, --v4linput=nr        Select video inputnr #N on video device [0]\n"
 	       "-W, --dev-width=WIDTH    Device width [720]\n"
 	       "-H, --dev-height=HEIGHT  Device height [480]\n"
-	       "-M, --mode=NUM           0=v4l 1=ipcvideo\n"
+	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe\n"
+
 	       );
 }
 
@@ -146,11 +149,19 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (capturemode == CM_FIXED)
+		enable_osd = 1;
+
 	if (capturemode == CM_V4L)
-		printf("V4L Capture: %dx%d %d/%d\n", width, height, g_V4LNumerator, g_V4LFrameRate);
+		printf("V4L Capture: %dx%d %d/%d [input: %d]\n", width, height,
+			g_V4LNumerator, g_V4LFrameRate, videoinputnr);
 
 	if (capturemode == CM_IPCVIDEO)
 		printf("IPC Video Capture: %dx%d %d/%d\n", width, height, g_V4LNumerator, g_V4LFrameRate);
+
+	if (capturemode == CM_FIXED)
+		printf("Fixed Frame Capture: %d/%d [osd: %s]\n", g_V4LNumerator, g_V4LFrameRate,
+			enable_osd ? "Enabled" : "Disabled");
 
 	if (signal(SIGINT, signalHandler) == SIG_ERR) {
 		printf("signal() failed\n");

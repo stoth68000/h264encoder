@@ -20,6 +20,8 @@ h264encoder_LDADD = \
 h264encoder_SOURCES = \
 	encoder.c \
 	encoder.h \
+	encoder-display.c \
+	encoder-display.h \
 	es2ts.c \
 	es2ts.h \
 	ipcvideo.c \
@@ -32,6 +34,9 @@ h264encoder_SOURCES = \
 	rtp.h \
 	v4l.c \
 	v4l.h \
+	fixed.c \
+	fixed.h \
+	fixed-frame.h \
 	va_display.c \
 	va_display.h \
 	va_display_drm.c \

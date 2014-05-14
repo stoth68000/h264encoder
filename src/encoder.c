@@ -35,6 +35,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <math.h>
+#include <time.h>
 #include <va/va.h>
 #include <va/va_enc_h264.h>
 #include <libyuv.h>
@@ -42,6 +43,7 @@
 #include "es2ts.h"
 #include "rtp.h"
 #include "va_display.h"
+#include "encoder-display.h"
 #include "main.h"
 
 extern char *encoder_nalOutputFilename;
@@ -115,10 +117,13 @@ static FILE *nal_fp = NULL;
 
 static int frame_width = 176;
 static int frame_height = 144;
+static int frame_osd = 0;
+static int frame_osd_length = 0;
 static int frame_width_mbaligned;
 static int frame_height_mbaligned;
 static int frame_rate = 30;
 static unsigned int frame_count = 60;
+static unsigned long long frames_processed = 0;
 extern unsigned int encoder_frame_bitrate;
 static unsigned int frame_slices = 1;
 static double frame_size = 0;
@@ -158,6 +163,8 @@ static int encode_syncmode = 0;
 static pthread_mutex_t encode_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t encode_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t encode_thread = -1;
+
+static struct encoder_display_context display_ctx;
 
 struct __bitstream {
 	unsigned int *buffer;
@@ -1867,7 +1874,7 @@ static int print_input()
 	return 0;
 }
 
-int encoder_init(int width, int height)
+int encoder_init(int width, int height, int osd)
 {
 	printf("%s(%d, %d)\n", __func__, width, height);
 
@@ -1884,6 +1891,13 @@ int encoder_init(int width, int height)
 	memset(&seq_param, 0, sizeof(seq_param));
 	memset(&pic_param, 0, sizeof(pic_param));
 	memset(&slice_param, 0, sizeof(slice_param));
+
+	encoder_display_init(&display_ctx);
+
+	if (osd) {
+		frame_osd = 1;
+		frame_osd_length = (width * 2) * height;
+	}
 
 	/* store coded data into a file */
 	if (encoder_nalOutputFilename) {
@@ -1919,7 +1933,51 @@ void encoder_close()
 
 int encoder_encode_frame(unsigned char *inbuf)
 {
+	if (!inbuf)
+		return 0;
+
+#if 0
+	/* Grab a frame - we'll use this for the static image */
+	static int fnr = 0;
+	if (fnr++ == 800) {
+		FILE *fh = fopen("/tmp/frame800.yuy2", "wb");
+		if (fh) {
+			fwrite(inbuf, (frame_width * 2) * frame_height, 1, fh);
+			fclose(fh);
+		}
+	}
+#endif
+
+	if (frame_osd) {
+		/* Warning: We're going to directly modify the input pixels. In fixed
+		 * frame encoding we'll continuiously overwrite and alter the static
+		 * image. If for any reason our OSD strings below begin to shorten,
+		 * we'll leave old pixel data in the source image.
+		 * This is intensional and saves an additional frame copy.
+		 */
+		encoder_display_render_reset(&display_ctx, inbuf, frame_width * 2);
+
+		/* Render any OSD */
+		char str[256];
+		time_t now = time(NULL);
+		struct tm *tm = localtime(&now);
+		sprintf(str, "%04d/%02d/%02d-%02d:%02d:%02d",
+			tm->tm_year + 1900,
+			tm->tm_mon + 1,
+			tm->tm_mday,
+			tm->tm_hour,
+			tm->tm_min,
+			tm->tm_sec
+			);
+		encoder_display_render_string(&display_ctx, (unsigned char*)str, strlen(str), 0, 10);
+
+		sprintf(str, "FRM: %lld", frames_processed);
+		encoder_display_render_string(&display_ctx, (unsigned char*)str, strlen(str), 0, 11);
+	}
+
 	encode_YUY2_frame(inbuf);
+
+	frames_processed++;
 	return 1;
 }
 
