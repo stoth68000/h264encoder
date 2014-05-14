@@ -788,7 +788,6 @@ static int vpp_supports_deinterlace(VADisplay va_dpy, VAProcDeinterlacingType dt
 	return found;
 }
 
-#if 1
 static int vpp_perform_deinterlace(VASurfaceID surface, unsigned int w, unsigned int h, VASurfaceID forward_reference)
 {
 	VAStatus va_status;
@@ -822,59 +821,16 @@ static int vpp_perform_deinterlace(VASurfaceID surface, unsigned int w, unsigned
 
 	return 0;
 }
-#else
-static int vpp_perform_deinterlace(VASurfaceID surface, unsigned int w, unsigned int h, VASurfaceID forward_reference)
+
+static int prior_slot(void)
 {
-	VAStatus va_status;
+	int slot = current_frame_display % SURFACE_NUM;
+	slot -= 1;
+	if (slot < 0)
+		slot = SURFACE_NUM + slot;
 
-	vaBeginPicture(va_dpy, vpp_context, surface);
-
-	VARectangle output_region;
-	VABufferID pipeline_buf;
-	VAProcPipelineParameterBuffer *pipeline_param;
-
-	va_status = vaCreateBuffer(va_dpy, vpp_context,
-		VAProcPipelineParameterBufferType, sizeof(*pipeline_param), 1,
-		NULL, &pipeline_buf);
-	CHECK_VASTATUS(va_status, "vaCreateBuffer");
-
-	// Setup output region for this surface
-	// e.g. upper left corner for the first surface
-	output_region.x      = 0;
-	output_region.y      = 0;
-	output_region.width  = w;
-	output_region.height = h;
-
-	va_status = vaMapBuffer(va_dpy, pipeline_buf, (void *)&pipeline_param);
-	CHECK_VASTATUS(va_status, "vaMapBuffer");
-	pipeline_param->surface              = surface;
-	pipeline_param->surface_region       = NULL;
-	pipeline_param->output_region        = &output_region;
-	pipeline_param->output_background_color = 0;
-	pipeline_param->filter_flags         = VA_FILTER_SCALING_HQ;
-	pipeline_param->filters              = vpp_filter_bufs;
-	pipeline_param->num_filters          = vpp_num_filter_bufs;
-	va_status = vaUnmapBuffer(va_dpy, pipeline_buf);
-	CHECK_VASTATUS(va_status, "vaUnmapBuffer");
-
-	// Update reference frames for deinterlacing, if necessary
-	vpp_forward_references[0] = forward_reference;
-	pipeline_param->forward_references      = vpp_forward_references;
-	pipeline_param->num_forward_references  = vpp_num_forward_references;
-	pipeline_param->backward_references     = vpp_backward_references;
-	pipeline_param->num_backward_references = vpp_num_backward_references;
-
-	// Apply filters
-	va_status = vaRenderPicture(va_dpy, vpp_context, &pipeline_buf, 1);
-	CHECK_VASTATUS(va_status, "vaRenderPicture");
-
-	vaEndPicture(va_dpy, vpp_context);
-
-	vaDestroyBuffer(va_dpy, pipeline_buf);
-
-	return 0;
+	return slot;
 }
-#endif
 
 static void deinit_vpp()
 {
@@ -2060,18 +2016,6 @@ static void upload_yuv_to_surface(unsigned char *inbuf, VASurfaceID surface_id,
 	va_status = vaDestroyImage(va_dpy, image.image_id);
 	CHECK_VASTATUS(va_status, "vaDestroyImage");
 }
-
-#if VPP
-static int prior_slot(void)
-{
-	int slot = current_frame_display % SURFACE_NUM;
-	slot -= 1;
-	if (slot < 0)
-		slot = SURFACE_NUM + slot;
-
-	return slot;
-}
-#endif
 
 static int encode_YUY2_frame(unsigned char *frame)
 {
