@@ -13,8 +13,6 @@
 #include "es2ts.h"
 #include "main.h"
 
-#define DEF_PNGPATH "/usr/local/bin"
-
 /* main.c */
 #define CM_V4L		0
 #define CM_IPCVIDEO	1
