@@ -1009,7 +1009,7 @@ static int init_va(void)
 			printf("Use profile VAProfileH264High\n");
 			break;
 		default:
-			printf("unknow profile. Set to Baseline");
+			printf("unknown profile. Set to Baseline");
 			h264_profile = VAProfileH264Baseline;
 			ip_period = 1;
 			constraint_set_flag |= (1 << 0);	/* Annex A.2.1 */
@@ -2134,7 +2134,7 @@ static int print_input()
 	       frame_width, frame_height, frame_count);
 	printf("INPUT: FrameRate    : %d\n", frame_rate);
 	printf("INPUT: Bitrate      : %d\n", encoder_frame_bitrate);
-	printf("INPUT: Slieces      : %d\n", frame_slices);
+	printf("INPUT: Slices       : %d\n", frame_slices);
 	printf("INPUT: IntraPeriod  : %d\n", intra_period);
 	printf("INPUT: IDRPeriod    : %d\n", intra_idr_period);
 	printf("INPUT: IpPeriod     : %d\n", ip_period);
