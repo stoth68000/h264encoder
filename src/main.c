@@ -9,6 +9,7 @@
 #include "v4l.h"
 #include "ipcvideo.h"
 #include "fixed.h"
+#include "fixed-4k.h"
 #include "encoder.h"
 #include "es2ts.h"
 #include "main.h"
@@ -17,7 +18,8 @@
 #define CM_V4L		0
 #define CM_IPCVIDEO	1
 #define CM_FIXED	2
-#define CM_MAX		CM_FIXED
+#define CM_FIXED_4K	3
+#define CM_MAX		CM_FIXED_4K
 
 unsigned int capturemode = CM_V4L;
 int time_to_quit = 0;
@@ -44,7 +46,7 @@ static void usage(int argc, char **argv)
 	       "-I, --v4linput=nr        Select video inputnr #N on video device [0]\n"
 	       "-W, --dev-width=WIDTH    Device width [720]\n"
 	       "-H, --dev-height=HEIGHT  Device height [480]\n"
-	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe\n"
+	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k\n"
 	       "-D, --vppdeinterlace=NUM 0=off 1=motionadaptive 2=bob\n"
 	       "-q, --initial_qp=NUM     Initial Quantization Parameter [def: 26]\n"
 	       "-Q  --minimal_qp=NUM     Minimum Quantization Parameter [def: 0]\n"
@@ -175,7 +177,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (capturemode == CM_FIXED)
+	if ((capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K))
 		encoder_params.enable_osd = 1;
 
 	if (capturemode == CM_V4L) {
@@ -193,6 +195,10 @@ int main(int argc, char **argv)
 
 	if (capturemode == CM_FIXED)
 		printf("Fixed Frame Capture: %d/%d [osd: %s]\n", g_V4LNumerator, g_V4LFrameRate,
+			encoder_params.enable_osd ? "Enabled" : "Disabled");
+
+	if (capturemode == CM_FIXED_4K)
+		printf("Fixed Frame (4k) Capture: %d/%d [osd: %s]\n", g_V4LNumerator, g_V4LFrameRate,
 			encoder_params.enable_osd ? "Enabled" : "Disabled");
 
 	if (signal(SIGINT, signalHandler) == SIG_ERR) {
@@ -223,6 +229,12 @@ int main(int argc, char **argv)
 			g_V4LFrameRate = 30;
 		fixed_init_device(&width, &height, g_V4LFrameRate);
 	}
+	if (capturemode == CM_FIXED_4K) {
+		fixed_4k_open_device();
+		if (g_V4LFrameRate == 0)
+			g_V4LFrameRate = 30;
+		fixed_4k_init_device(&width, &height, g_V4LFrameRate);
+	}
 
 	printf("Using frame resolution: %dx%d\n", width, height);
 
@@ -244,7 +256,7 @@ int main(int argc, char **argv)
 #endif
 
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
-	if (((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) || (capturemode == CM_FIXED)) &&
+	if (((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) || (capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
 		ipport && (initESHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0)) {
 		printf("Error: ES2TS init failed\n");
 		goto rtp_failed;
@@ -268,6 +280,12 @@ int main(int argc, char **argv)
 		fixed_stop_capturing();
 	}
 
+	if (capturemode == CM_FIXED_4K) {
+		fixed_4k_start_capturing();
+		fixed_4k_mainloop();
+		fixed_4k_stop_capturing();
+	}
+
 	encoder_close();
 
 	freeESHandler();
@@ -288,6 +306,10 @@ encoder_failed:
 	if (capturemode == CM_FIXED) {
 		fixed_uninit_device();
 		fixed_close_device();
+	}
+	if (capturemode == CM_FIXED_4K) {
+		fixed_4k_uninit_device();
+		fixed_4k_close_device();
 	}
 
 	return 0;

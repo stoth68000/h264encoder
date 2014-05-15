@@ -1195,6 +1195,9 @@ static int setup_encode()
 	codedbuf_size =
 	    (frame_width_mbaligned * frame_height_mbaligned * 400) / (16 * 16);
 
+	if ((frame_width_mbaligned == 3840) && (frame_height_mbaligned == 2160))
+		codedbuf_size = 6480000; /* 4K resolution too large, buffers create to fail */
+
 	for (i = 0; i < SURFACE_NUM; i++) {
 		/* create coded buffer once for all
 		 * other VA buffers which won't be used again after vaRenderPicture.

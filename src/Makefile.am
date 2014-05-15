@@ -35,6 +35,8 @@ h264encoder_SOURCES = \
 	fixed.c \
 	fixed.h \
 	fixed-frame.h \
+	fixed-4k.c \
+	fixed-4k.h \
 	va_display.c \
 	va_display.h \
 	va_display_drm.c \
