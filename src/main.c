@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "rtp.h"
 #include "v4l.h"
@@ -47,6 +48,7 @@ static void usage(int argc, char **argv)
 	       "-H, --dev-height=HEIGHT  Device height [480]\n"
 	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe\n"
 	       "-D, --vppdeinterlace=NUM 0=off 1=motionadaptive 2=bob\n"
+	       "-q, --initial_qp=NUM    Initial Quantization Parameter [def: 26]\n"
 	       );
 }
 
@@ -70,17 +72,21 @@ static const struct option long_options[] = {
 	{ "dev-height", required_argument, NULL, 'H' },
 	{ "mode", required_argument, NULL, 'M' },
 	{ "vppdeinterlace", required_argument, NULL, 'D' },
+	{ "initial_qp", required_argument, NULL, 'q' },
 	{ 0, 0, 0, 0}
 };
 
 int main(int argc, char **argv)
 {
+	struct encoder_params_s encoder_params;
 	char *ipaddress = "192.168.0.67";
 	int ipport = 0;
 	int videoinputnr = 0;
-	int enable_osd = 0;
-	int deinterlace = 0;
 	v4l_dev_name = (char *)"/dev/video0";
+
+	memset(&encoder_params, 0, sizeof(encoder_params));
+	encoder_params.initial_qp = 26;
+	encoder_params.enable_osd = 0;
 
 	for (;;) {
 		int index;
@@ -120,14 +126,17 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'D':
-			deinterlace = atoi(optarg);
-			if (deinterlace > 2) {
+			encoder_params.deinterlacemode = atoi(optarg);
+			if (encoder_params.deinterlacemode > 2) {
 				usage(argc, argv);
 				exit(0);
 			}
 			break;
 		case 'o':
 			encoder_nalOutputFilename = optarg;
+			break;
+		case 'q':
+			encoder_params.initial_qp = atoi(optarg);
 			break;
 		case 'r':
 			io = IO_METHOD_READ;
@@ -153,7 +162,7 @@ int main(int argc, char **argv)
 			height = atoi(optarg);
 			break;
 		case 'Z':
-			enable_osd = atoi(optarg);
+			encoder_params.enable_osd = atoi(optarg);
 			break;
 		default:
 			usage(argc, argv);
@@ -162,7 +171,7 @@ int main(int argc, char **argv)
 	}
 
 	if (capturemode == CM_FIXED)
-		enable_osd = 1;
+		encoder_params.enable_osd = 1;
 
 	if (capturemode == CM_V4L)
 		printf("V4L Capture: %dx%d %d/%d [input: %d]\n", width, height,
@@ -173,7 +182,7 @@ int main(int argc, char **argv)
 
 	if (capturemode == CM_FIXED)
 		printf("Fixed Frame Capture: %d/%d [osd: %s]\n", g_V4LNumerator, g_V4LFrameRate,
-			enable_osd ? "Enabled" : "Disabled");
+			encoder_params.enable_osd ? "Enabled" : "Disabled");
 
 	if (signal(SIGINT, signalHandler) == SIG_ERR) {
 		printf("signal() failed\n");
@@ -206,7 +215,9 @@ int main(int argc, char **argv)
 
 	printf("Using frame resolution: %dx%d\n", width, height);
 
-	if (encoder_init(width, height, enable_osd, deinterlace)) {
+	encoder_params.height = height;
+	encoder_params.width = width;
+	if (encoder_init(&encoder_params)) {
 		printf("Error: Encoder init failed\n");
 		goto encoder_failed;
 	}

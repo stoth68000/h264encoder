@@ -43,6 +43,7 @@
 #endif
 #include <va/va_enc_h264.h>
 
+#include "encoder.h"
 #include "es2ts.h"
 #include "rtp.h"
 #include "va_display.h"
@@ -2146,17 +2147,19 @@ static int print_input()
 	return 0;
 }
 
-int encoder_init(int width, int height, int osd, int deinterlacemode)
+int encoder_init(struct encoder_params_s *params)
 {
-	printf("%s(%d, %d)\n", __func__, width, height);
+	assert(params);
+	printf("%s(%d, %d)\n", __func__, params->width, params->height);
 
-	frame_width = width;
-	frame_height = height;
+	frame_width = params->width;
+	frame_height = params->height;
 	frame_rate = 30;
 	h264_profile = VAProfileH264High;
 	intra_idr_period = frame_rate;
+	initial_qp = params->initial_qp;
 #if VPP
-	vpp_deinterlace_mode = deinterlacemode;
+	vpp_deinterlace_mode = params->deinterlacemode;
 #endif
 	current_frame_encoding = 0;
 	encode_syncmode = 0;
@@ -2169,9 +2172,9 @@ int encoder_init(int width, int height, int osd, int deinterlacemode)
 
 	encoder_display_init(&display_ctx);
 
-	if (osd) {
+	if (params->enable_osd) {
 		frame_osd = 1;
-		frame_osd_length = (width * 2) * height;
+		frame_osd_length = (params->width * 2) * params->height;
 	}
 
 	/* store coded data into a file */
