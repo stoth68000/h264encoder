@@ -1997,13 +1997,12 @@ static int encode_YUY2_frame(unsigned char *frame)
 	VAStatus va_status;
 	static int preload = 0;
 
-	/* upload RAW YUV data into all surfaces */
-
 	if (preload++ == 0) {
-		//upload_source_YUV_once_for_all();
-		for (i = 0; i < SURFACE_NUM; i++) {
+		/* upload RAW YUV data into all surfaces, so the compressor doesn't assert in our first few
+		 * real frames.
+		 */
+		for (i = 0; i < SURFACE_NUM; i++)
 			upload_yuv_to_surface(frame, src_surface[i], frame_width, frame_height);
-		}
 	} else {
 		/* TODO: We probably don't need to specifically upload non de-interlaced content to the
 		 * current slot, it's probably OK to run the stream 1 frame behind live and always
