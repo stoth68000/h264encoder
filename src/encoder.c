@@ -2031,16 +2031,28 @@ static int encode_YUY2_frame(unsigned char *frame)
 		for (i = 0; i < SURFACE_NUM; i++) {
 			upload_yuv_to_surface(frame, src_surface[i], frame_width, frame_height);
 		}
-	} else
-		upload_yuv_to_surface(frame, src_surface[current_slot], frame_width, frame_height);
+	} else {
+		/* TODO: We probably don't need to specifically upload non de-interlaced content to the
+		 * current slot, it's probably OK to run the stream 1 frame behind live and always
+		 * upload to the same slot regardless of whether VPP is enabled or not.
+		 * IE. Most likely we should always upload to the prior slot.
+		 */
+		if (vpp_deinterlace_mode > 0)
+			upload_yuv_to_surface(frame, src_surface[prior_slot()], frame_width, frame_height);
+		else
+			upload_yuv_to_surface(frame, src_surface[current_slot], frame_width, frame_height);
+	}
 
 	/* Once only - Create the encoding thread */
 	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
 		pthread_create(&encode_thread, NULL, storage_task_thread, NULL);
 
 #if VPP
-	if (vpp_deinterlace_mode > 0)
-		vpp_perform_deinterlace(src_surface[current_slot], frame_width, frame_height, src_surface[prior_slot()]);
+	if (vpp_deinterlace_mode > 0) {
+		/* (input surface, output surface) Take new clean data, merge into current during encoding. */
+		vpp_perform_deinterlace(src_surface[current_slot], frame_width, frame_height, src_surface[next_slot]);
+		vpp_perform_deinterlace(src_surface[prior_slot()], frame_width, frame_height, src_surface[current_slot]);
+	}
 #endif
 
 	encoding2display_order(current_frame_encoding,
