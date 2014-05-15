@@ -85,6 +85,7 @@ int main(int argc, char **argv)
 	int ipport = 0;
 	int videoinputnr = 0;
 	v4l_dev_name = (char *)"/dev/video0";
+	int req_deint_mode = -1;
 
 	memset(&encoder_params, 0, sizeof(encoder_params));
 	encoder_params.initial_qp = 26;
@@ -129,8 +130,8 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'D':
-			encoder_params.deinterlacemode = atoi(optarg);
-			if (encoder_params.deinterlacemode > 2) {
+			req_deint_mode = atoi(optarg);
+			if (req_deint_mode > 2) {
 				usage(argc, argv);
 				exit(0);
 			}
@@ -179,9 +180,15 @@ int main(int argc, char **argv)
 	if (capturemode == CM_FIXED)
 		encoder_params.enable_osd = 1;
 
-	if (capturemode == CM_V4L)
+	if (capturemode == CM_V4L) {
+		if (req_deint_mode == -1 /* UNSET */)
+			encoder_params.deinterlacemode = 2;
+		else
+			encoder_params.deinterlacemode = req_deint_mode;
+
 		printf("V4L Capture: %dx%d %d/%d [input: %d]\n", width, height,
 			g_V4LNumerator, g_V4LFrameRate, videoinputnr);
+	}
 
 	if (capturemode == CM_IPCVIDEO)
 		printf("IPC Video Capture: %dx%d %d/%d\n", width, height, g_V4LNumerator, g_V4LFrameRate);
