@@ -26,8 +26,6 @@ h264encoder_SOURCES = \
 	es2ts.h \
 	ipcvideo.c \
 	ipcvideo.h \
-	loadsurface.h \
-	loadsurface_yuv.h \
 	main.c \
 	main.h \
 	rtp.c \

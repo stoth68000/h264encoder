@@ -58,8 +58,6 @@ extern char *encoder_nalOutputFilename;
         exit(1);                                                        \
     }
 
-#include "loadsurface.h"
-
 #define VAEntrypointMax		10
 
 #define NAL_REF_IDC_NONE        0
@@ -1775,25 +1773,6 @@ static int render_slice(void)
 	return 0;
 }
 
-static int upload_source_YUV_once_for_all()
-{
-	int box_width = 8;
-	int row_shift = 0;
-	int i;
-
-	for (i = 0; i < SURFACE_NUM; i++) {
-		printf("\rLoading data into surface %d.....", i);
-		upload_surface(va_dpy, src_surface[i], box_width, row_shift, 0);
-
-		row_shift++;
-		if (row_shift == (2 * box_width))
-			row_shift = 0;
-	}
-	printf("Complete surface loading\n");
-
-	return 0;
-}
-
 static int save_codeddata(unsigned long long display_order,
 			  unsigned long long encode_order)
 {
@@ -2027,7 +2006,7 @@ static int encode_YUY2_frame(unsigned char *frame)
 	/* upload RAW YUV data into all surfaces */
 
 	if (preload++ == 0) {
-		upload_source_YUV_once_for_all();
+		//upload_source_YUV_once_for_all();
 		for (i = 0; i < SURFACE_NUM; i++) {
 			upload_yuv_to_surface(frame, src_surface[i], frame_width, frame_height);
 		}
