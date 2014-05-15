@@ -2158,6 +2158,7 @@ int encoder_init(struct encoder_params_s *params)
 	h264_profile = VAProfileH264High;
 	intra_idr_period = frame_rate;
 	initial_qp = params->initial_qp;
+	minimal_qp = params->minimal_qp;
 #if VPP
 	vpp_deinterlace_mode = params->deinterlacemode;
 #endif

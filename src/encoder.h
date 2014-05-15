@@ -6,6 +6,7 @@ struct encoder_params_s
 	unsigned int enable_osd;
 	unsigned int deinterlacemode;
 	unsigned int initial_qp;
+	unsigned int minimal_qp;
 };
 
 int  encoder_init(struct encoder_params_s *params);

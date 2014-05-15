@@ -48,11 +48,12 @@ static void usage(int argc, char **argv)
 	       "-H, --dev-height=HEIGHT  Device height [480]\n"
 	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe\n"
 	       "-D, --vppdeinterlace=NUM 0=off 1=motionadaptive 2=bob\n"
-	       "-q, --initial_qp=NUM    Initial Quantization Parameter [def: 26]\n"
+	       "-q, --initial_qp=NUM     Initial Quantization Parameter [def: 26]\n"
+	       "-Q  --minimal_qp=NUM     Minimum Quantization Parameter [def: 0]\n"
 	       );
 }
 
-static const char short_options[] = "b:d:i:o:p:?mruD:Pf:n:W:H:M:I:Z:D:";
+static const char short_options[] = "b:d:i:o:p:?mruD:Pf:n:W:H:M:I:Z:D:q:Q:";
 
 static const struct option long_options[] = {
 	{ "bitrate", required_argument, NULL, 'b' },
@@ -73,6 +74,7 @@ static const struct option long_options[] = {
 	{ "mode", required_argument, NULL, 'M' },
 	{ "vppdeinterlace", required_argument, NULL, 'D' },
 	{ "initial_qp", required_argument, NULL, 'q' },
+	{ "minimal_qp", required_argument, NULL, 'Q' },
 	{ 0, 0, 0, 0}
 };
 
@@ -86,6 +88,7 @@ int main(int argc, char **argv)
 
 	memset(&encoder_params, 0, sizeof(encoder_params));
 	encoder_params.initial_qp = 26;
+	encoder_params.minimal_qp = 0;
 	encoder_params.enable_osd = 0;
 
 	for (;;) {
@@ -137,6 +140,9 @@ int main(int argc, char **argv)
 			break;
 		case 'q':
 			encoder_params.initial_qp = atoi(optarg);
+			break;
+		case 'Q':
+			encoder_params.minimal_qp = atoi(optarg);
 			break;
 		case 'r':
 			io = IO_METHOD_READ;
