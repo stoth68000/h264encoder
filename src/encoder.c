@@ -160,6 +160,7 @@ static unsigned int current_frame_num = 0;
 static int current_frame_type;
 
 #define current_slot (current_frame_display % SURFACE_NUM)
+#define next_slot ((current_frame_display + 1) % SURFACE_NUM)
 
 static int misc_priv_type = 0;
 static int misc_priv_value = 0;
@@ -1929,7 +1930,7 @@ static void *storage_task_thread(void *t)
 
 /* Map a surface, shift the inbuf pixels into it */
 static void upload_yuv_to_surface(unsigned char *inbuf, VASurfaceID surface_id,
-				  unsigned int frame, int picture_width,
+				  int picture_width,
 				  int picture_height)
 {
 	VAImage image;
@@ -2028,10 +2029,10 @@ static int encode_YUY2_frame(unsigned char *frame)
 	if (preload++ == 0) {
 		upload_source_YUV_once_for_all();
 		for (i = 0; i < SURFACE_NUM; i++) {
-			upload_yuv_to_surface(frame, src_surface[i], i, frame_width, frame_height);
+			upload_yuv_to_surface(frame, src_surface[i], frame_width, frame_height);
 		}
 	} else
-		upload_yuv_to_surface(frame, src_surface[current_slot], 15 + current_frame_num, frame_width, frame_height);
+		upload_yuv_to_surface(frame, src_surface[current_slot], frame_width, frame_height);
 
 	/* Once only - Create the encoding thread */
 	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
