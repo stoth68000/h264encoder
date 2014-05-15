@@ -37,10 +37,7 @@
 #include <math.h>
 #include <time.h>
 #include <va/va.h>
-#define VPP 1
-#if VPP
 #include <va/va_vpp.h>
-#endif
 #include <va/va_enc_h264.h>
 
 #include "encoder.h"
@@ -103,7 +100,7 @@ static VAEncSliceParameterBufferH264 slice_param;
 static VAPictureH264 CurrentCurrPic;
 static VAPictureH264 ReferenceFrames[16], RefPicList0_P[32], RefPicList0_B[32], RefPicList1_B[32];
 
-#if VPP
+/* VPP */
 static VABufferID vpp_filter_bufs[VAProcFilterCount];
 static unsigned int vpp_num_filter_bufs = 0;
 static VAConfigID vpp_config = VA_INVALID_ID;
@@ -117,7 +114,6 @@ static unsigned int vpp_deinterlace_mode; /* 0 = off, 1 = ma, 2 = bob */
 static VARectangle vpp_output_region;
 static VABufferID vpp_pipeline_buf;
 static VAProcPipelineParameterBuffer *vpp_pipeline_param;
-#endif
 
 static unsigned int MaxFrameNum = (2 << 16);
 static unsigned int MaxPicOrderCntLsb = (2 << 8);
@@ -702,7 +698,6 @@ int string_to_rc(char *str)
 	return rc_mode;
 }
 
-#if VPP
 static char * vpp_filter_string(VAProcFilterType filter)
 {
 	switch (filter) {
@@ -943,7 +938,6 @@ static int init_vpp()
 
 	return 0;
 }
-#endif
 
 static int init_va(void)
 {
@@ -2026,13 +2020,11 @@ static int encode_YUY2_frame(unsigned char *frame)
 	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
 		pthread_create(&encode_thread, NULL, storage_task_thread, NULL);
 
-#if VPP
 	if (vpp_deinterlace_mode > 0) {
 		/* (input surface, output surface) Take new clean data, merge into current during encoding. */
 		vpp_perform_deinterlace(src_surface[current_slot], frame_width, frame_height, src_surface[next_slot]);
 		vpp_perform_deinterlace(src_surface[prior_slot()], frame_width, frame_height, src_surface[current_slot]);
 	}
-#endif
 
 	encoding2display_order(current_frame_encoding,
 			       intra_period,
@@ -2109,9 +2101,8 @@ static int release_encode()
 
 static int deinit_va()
 {
-#if VPP
 	deinit_vpp();
-#endif
+
 	vaTerminate(va_dpy);
 
 	va_close_display(va_dpy);
@@ -2151,9 +2142,8 @@ int encoder_init(struct encoder_params_s *params)
 	intra_idr_period = frame_rate;
 	initial_qp = params->initial_qp;
 	minimal_qp = params->minimal_qp;
-#if VPP
 	vpp_deinterlace_mode = params->deinterlacemode;
-#endif
+
 	current_frame_encoding = 0;
 	encode_syncmode = 0;
 
@@ -2192,9 +2182,7 @@ int encoder_init(struct encoder_params_s *params)
 	print_input();
 
 	init_va();
-#if VPP
 	init_vpp();
-#endif
 	setup_encode();
 	return 0;
 }
