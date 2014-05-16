@@ -47,6 +47,16 @@ void fixed_mainloop(void)
 	struct timeval now;
 	unsigned int p = 0;
 
+	/* Imagemagik did a half-assed job at converting BMP to yuyv,
+	 * do a byte re-order to fix the colorspace.
+	 */
+	unsigned char a;
+	for (unsigned int i = 0; i < sizeof(fixedframe); i += 2) {
+		a = fixedframe[i];
+		fixedframe[i] = fixedframe[i + 1];
+		fixedframe[i + 1] = a;
+	}
+
 	/* calculate the frame processing time and attempt
 	 * to sleep for the correct interval before pushing a
 	 * new frame.
