@@ -2,6 +2,11 @@
 #include <libes2ts/es2ts.h>
 #include <libavformat/avformat.h>
 
+/* Compatibility with older versions of ffmpeg */
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54,59,100)
+# define AV_CODEC_ID_MPEG2TS CODEC_ID_MPEG2TS
+#endif
+
 /* A combined ES to TS layer, where we convert nals into TS packets
  * using libes2ts then push the ts buffers out to RTP.
  */
@@ -48,7 +53,7 @@ static int es2ts_initRTPHandler(char *ipaddress, int port, int w, int h, int fps
 
 	/* initalize codec */
 	AVCodecContext* c = tsav_strm->codec;
-	c->codec_id = CODEC_ID_MPEG2TS;
+	c->codec_id = AV_CODEC_ID_MPEG2TS;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
 	c->bit_rate = 3000000;
 	c->width = w;

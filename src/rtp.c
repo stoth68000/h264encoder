@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <libavformat/avformat.h>
 
+/* Compatibility with older versions of ffmpeg */
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54,59,100)
+# define AV_CODEC_ID_H264 CODEC_ID_H264
+#endif
+
 /* libavformat
  * http://stackoverflow.com/questions/10143753/streaming-h-264-over-rtp-with-libavformat
  */
@@ -52,7 +57,7 @@ int initRTPHandler(char *ipaddress, int port, int w, int h, int fps)
 
 	/* initalize codec */
 	AVCodecContext* c = av_strm->codec;
-	c->codec_id = CODEC_ID_H264;
+	c->codec_id = AV_CODEC_ID_H264;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
 	c->bit_rate = 3000000;
 	c->width = w;
