@@ -35,7 +35,7 @@ static void usage(int argc, char **argv)
 	printf("Usage:\n"
 	       "\n"
 	       "Options:\n"
-	       "-?, --help               Print this message\n"
+	       "-h, --help               Print this message\n"
 	       "-b, --bitrate=bps        Encoding bitrate [3000000]\n"
 	       "-d, --device=NAME        Video device name [/dev/video0]\n"
 	       "-o, --output=filename    Record raw nals to output file\n"
@@ -53,14 +53,14 @@ static void usage(int argc, char **argv)
 	       );
 }
 
-static const char short_options[] = "b:d:i:o:p:?mruD:Pf:n:W:H:M:I:Z:D:q:Q:";
+static const char short_options[] = "b:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:q:Q:";
 
 static const struct option long_options[] = {
 	{ "bitrate", required_argument, NULL, 'b' },
 	{ "device", required_argument, NULL, 'd' },
 	{ "ipaddress", required_argument, NULL, 'i' },
 	{ "ipport", required_argument, NULL, 'p' },
-	{ "help", no_argument, NULL, '?' },
+	{ "help", no_argument, NULL, 'h' },
 	{ "mmap", no_argument, NULL, 'm' },
 	{ "output", required_argument, NULL, 'o' },
 	{ "read", no_argument, NULL, 'r' },
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 		case 'd':
 			v4l_dev_name = optarg;
 			break;
-		case '?':
+		case 'h':
 			usage(argc, argv);
 			exit(0);
 		case 'i':
