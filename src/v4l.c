@@ -36,7 +36,6 @@ struct buffer {
 io_method io = IO_METHOD_MMAP;
 char *v4l_dev_name = NULL;
 char *encoder_nalOutputFilename = NULL;
-unsigned int encoder_frame_bitrate = 3000000;
 
 unsigned int width = 720;
 unsigned int height = 480;

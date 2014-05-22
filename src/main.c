@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 		case 0:	/* getopt_long() flag */
 			break;
 		case 'b':
-			encoder_frame_bitrate = atoi(optarg);
+			encoder_params.frame_bitrate = atoi(optarg);
 			break;
 		case 'd':
 			v4l_dev_name = optarg;

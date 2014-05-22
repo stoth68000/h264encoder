@@ -13,8 +13,6 @@ extern unsigned int height;
 extern unsigned int g_V4LNumerator;
 extern unsigned int g_V4LFrameRate;
 extern char *encoder_nalOutputFilename;
-extern unsigned int encoder_frame_bitrate;
-
 
 void v4l_mainloop(void);
 void stop_v4l_capturing(void);

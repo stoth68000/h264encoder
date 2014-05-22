@@ -7,6 +7,7 @@ struct encoder_params_s
 	unsigned int deinterlacemode;
 	unsigned int initial_qp;
 	unsigned int minimal_qp;
+	unsigned int frame_bitrate;
 };
 
 int  encoder_init(struct encoder_params_s *params);

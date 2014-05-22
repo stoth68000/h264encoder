@@ -126,6 +126,7 @@ static int constraint_set_flag = 0;
 static int h264_packedheader = 0;	/* support pack header? */
 static int h264_maxref = (1 << 16 | 1);
 static int h264_entropy_mode = 1;	/* cabac */
+static unsigned int encoder_frame_bitrate = 3000000;
 
 static FILE *nal_fp = NULL;
 
@@ -2145,6 +2146,7 @@ int encoder_init(struct encoder_params_s *params)
 	initial_qp = params->initial_qp;
 	minimal_qp = params->minimal_qp;
 	vpp_deinterlace_mode = params->deinterlacemode;
+	encoder_frame_bitrate = params->frame_bitrate;
 
 	current_frame_encoding = 0;
 	encode_syncmode = 0;
