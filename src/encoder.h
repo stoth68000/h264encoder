@@ -16,4 +16,6 @@ void encoder_close();
 int  encoder_encode_frame(unsigned char *inbuf);
 int  encoder_string_to_rc(char *str);
 char *encoder_rc_to_string(int rcmode);
+int  encoder_string_to_profile(char *str);
+char *encoder_profile_to_string(int profile);
 

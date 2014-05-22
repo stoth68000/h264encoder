@@ -699,6 +699,37 @@ int encoder_string_to_rc(char *str)
 	return rc_mode;
 }
 
+char *encoder_profile_to_string(int profile)
+{
+	switch (profile) {
+	case VAProfileH264Baseline:
+		return "BP";
+	case VAProfileH264Main:
+		return "MP";
+	case VAProfileH264High:
+		return "HP";
+	default:
+		return "Unknown";
+	}
+}
+
+int encoder_string_to_profile(char *str)
+{
+	int ret;
+
+	if (!strncmp(str, "BP", 2))
+		ret = VAProfileH264Baseline;
+	else if (!strncmp(str, "MP", 2))
+		ret = VAProfileH264Main;
+	else if (!strncmp(str, "HP", 2))
+		ret = VAProfileH264High;
+	else {
+		printf("Unknown profile\n");
+		ret = -1;
+	}
+	return ret;
+}
+
 static char * vpp_filter_string(VAProcFilterType filter)
 {
 	switch (filter) {
