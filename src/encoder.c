@@ -656,7 +656,7 @@ int string_to_fourcc(char *str)
 	return fourcc;
 }
 
-static char *rc_to_string(int rcmode)
+char *encoder_rc_to_string(int rcmode)
 {
 	switch (rc_mode) {
 	case VA_RC_NONE:
@@ -676,7 +676,7 @@ static char *rc_to_string(int rcmode)
 	}
 }
 
-int string_to_rc(char *str)
+int encoder_string_to_rc(char *str)
 {
 	int rc_mode;
 
@@ -2116,7 +2116,7 @@ static int deinit_va()
 static int print_input()
 {
 	printf("\n\nINPUT:Try to encode H264...\n");
-	printf("INPUT: RateControl  : %s\n", rc_to_string(rc_mode));
+	printf("INPUT: RateControl  : %s\n", encoder_rc_to_string(rc_mode));
 	printf("INPUT: Resolution   : %dx%d, %d frames\n",
 	       frame_width, frame_height, frame_count);
 	printf("INPUT: FrameRate    : %d\n", frame_rate);
