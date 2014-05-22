@@ -2172,11 +2172,16 @@ int encoder_init(struct encoder_params_s *params)
 	frame_width = params->width;
 	frame_height = params->height;
 	frame_rate = 30;
-	h264_profile = VAProfileH264High;
+	h264_profile = params->h264_profile;
 	intra_idr_period = frame_rate;
 	initial_qp = params->initial_qp;
 	minimal_qp = params->minimal_qp;
 	vpp_deinterlace_mode = params->deinterlacemode;
+	intra_period = params->intra_period;
+	intra_idr_period = params->idr_period;
+	ip_period = params->ip_period;
+	h264_entropy_mode = params->h264_entropy_mode;
+	rc_mode = params->rc_mode;
 	encoder_frame_bitrate = params->frame_bitrate;
 
 	current_frame_encoding = 0;
@@ -2234,7 +2239,15 @@ void encoder_param_defaults(struct encoder_params_s *p)
 	p->initial_qp = 26;
 	p->minimal_qp = 0;
 	p->enable_osd = 0;
+	p->intra_period = 30;
+	p->idr_period = 60;
+	p->ip_period = 1;
+	p->h264_profile = VAProfileH264High;
+	p->h264_entropy_mode = 1;
+	p->rc_mode = VA_RC_VBR;
+	p->frame_bitrate = 3000000;
 }
+
 int encoder_encode_frame(unsigned char *inbuf)
 {
 	if (!inbuf)

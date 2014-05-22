@@ -1,4 +1,6 @@
 
+#include <va/va.h>
+
 struct encoder_params_s
 {
 	unsigned int width;
@@ -7,6 +9,14 @@ struct encoder_params_s
 	unsigned int deinterlacemode;
 	unsigned int initial_qp;
 	unsigned int minimal_qp;
+
+	unsigned int intra_period;
+	unsigned int idr_period;
+	unsigned int ip_period;
+	VAProfile h264_profile;
+	unsigned int h264_entropy_mode;
+	int rc_mode;
+
 	unsigned int frame_bitrate;
 };
 
