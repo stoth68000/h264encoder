@@ -2197,6 +2197,13 @@ void encoder_close()
 	deinit_va();
 }
 
+void encoder_param_defaults(struct encoder_params_s *p)
+{
+	memset(p, 0, sizeof(*p));
+	p->initial_qp = 26;
+	p->minimal_qp = 0;
+	p->enable_osd = 0;
+}
 int encoder_encode_frame(unsigned char *inbuf)
 {
 	if (!inbuf)

@@ -11,6 +11,7 @@ struct encoder_params_s
 };
 
 int  encoder_init(struct encoder_params_s *params);
+void encoder_param_defaults(struct encoder_params_s *p);
 void encoder_close();
 int  encoder_encode_frame(unsigned char *inbuf);
 int  encoder_string_to_rc(char *str);

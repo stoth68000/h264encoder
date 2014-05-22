@@ -87,10 +87,7 @@ int main(int argc, char **argv)
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
 
-	memset(&encoder_params, 0, sizeof(encoder_params));
-	encoder_params.initial_qp = 26;
-	encoder_params.minimal_qp = 0;
-	encoder_params.enable_osd = 0;
+	encoder_param_defaults(&encoder_params);
 
 	for (;;) {
 		int index;
