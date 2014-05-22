@@ -32,28 +32,49 @@ static void signalHandler(int a_Signal)
 
 static void usage(int argc, char **argv)
 {
+	struct encoder_params_s p;
+
+	encoder_param_defaults(&p);
+
 	printf("Usage:\n"
-	       "\n"
-	       "Options:\n"
-	       "-h, --help               Print this message\n"
-	       "-b, --bitrate=bps        Encoding bitrate [3000000]\n"
-	       "-d, --device=NAME        Video device name [/dev/video0]\n"
-	       "-o, --output=filename    Record raw nals to output file\n"
-	       "-i, --ipaddress=a.b.c.d  Remote IP RTP address\n"
-	       "-p, --ipport=9999        Remote IP RTP port\n"
-	       "-f, --v4lframerate=FPS   Framerate [no limit]\n"
-	       "-n, --v4lnumerator=NUM   Numerator [no limit]\n"
-	       "-I, --v4linput=nr        Select video inputnr #N on video device [0]\n"
-	       "-W, --dev-width=WIDTH    Device width [720]\n"
-	       "-H, --dev-height=HEIGHT  Device height [480]\n"
-	       "-M, --mode=NUM           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k\n"
-	       "-D, --vppdeinterlace=NUM 0=off 1=motionadaptive 2=bob\n"
-	       "-q, --initial_qp=NUM     Initial Quantization Parameter [def: 26]\n"
-	       "-Q  --minimal_qp=NUM     Minimum Quantization Parameter [def: 0]\n"
+		"\n"
+		"Options:\n"
+		"-h, --help                    Print this message\n"
+		"-b, --bitrate <number>        Encoding bitrate [def: %d]\n"
+		"-d, --device=NAME             Video device name [/dev/video0]\n"
+		"-o, --output=filename         Record raw nals to output file\n"
+		"-i, --ipaddress=a.b.c.d       Remote IP RTP address\n"
+		"-p, --ipport=9999             Remote IP RTP port\n"
+		"-f, --v4lframerate=FPS        Framerate [no limit]\n"
+		"-n, --v4lnumerator=NUM        Numerator [no limit]\n"
+		"-I, --v4linput <number>       Select video inputnr #0-3 on video device [def: 0]\n"
+		"-W, --dev-width <number>      Device width [720]\n"
+		"-H, --dev-height <number>     Device height [480]\n"
+		"-M, --mode <number>           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k [def: 0]\n"
+		"-D, --vppdeinterlace <number> 0=off 1=motionadaptive 2=bob\n",
+		p.frame_bitrate
+		);
+
+	printf( "    --initial_qp <number>     Initial Quantization Parameter [def: %d]\n"
+		"    --minimal_qp <number>     Minimum Quantization Parameter [def: %d]\n"
+		"    --intra_period <number>   [def: %d]\n"
+		"    --idr_period <number>     [def: %d]\n"
+		"    --ip_period <number>      [def: %d]\n"
+		"    --rcmode <NONE|CBR|VBR|VCM|CQP|VBR_CONTRAINED> [def: %s]\n"
+		"    --entropy <0|1>, 1 means cabac, 0 cavlc [def: %d]\n"
+		"    --profile <BP|MP|HP>      [def: %s]\n",
+			p.initial_qp,
+			p.minimal_qp,
+			p.intra_period,
+			p.idr_period,
+			p.ip_period,
+			encoder_rc_to_string(p.rc_mode),
+			p.h264_entropy_mode,
+			encoder_profile_to_string(p.h264_profile)
 	       );
 }
 
-static const char short_options[] = "b:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:q:Q:";
+static const char short_options[] = "b:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
 	{ "bitrate", required_argument, NULL, 'b' },
@@ -73,8 +94,15 @@ static const struct option long_options[] = {
 	{ "dev-height", required_argument, NULL, 'H' },
 	{ "mode", required_argument, NULL, 'M' },
 	{ "vppdeinterlace", required_argument, NULL, 'D' },
-	{ "initial_qp", required_argument, NULL, 'q' },
-	{ "minimal_qp", required_argument, NULL, 'Q' },
+	{ "intra_period", required_argument, NULL, 1 },
+	{ "idr_period", required_argument, NULL, 2 },
+	{ "ip_period", required_argument, NULL, 3 },
+	{ "rcmode", required_argument, NULL, 4 },
+	{ "entropy", required_argument, NULL, 5 },
+	{ "profile", required_argument, NULL, 6 },
+	{ "initial_qp", required_argument, NULL, 7 },
+	{ "minimal_qp", required_argument, NULL, 8 },
+
 	{ 0, 0, 0, 0}
 };
 
@@ -136,10 +164,36 @@ int main(int argc, char **argv)
 		case 'o':
 			encoder_nalOutputFilename = optarg;
 			break;
-		case 'q':
+		case 1:
+			encoder_params.intra_period = atoi(optarg);
+			break;
+		case 2:
+			encoder_params.idr_period = atoi(optarg);
+			break;
+		case 3:
+			encoder_params.ip_period = atoi(optarg);
+			break;
+		case 4:
+			encoder_params.rc_mode = encoder_string_to_rc(optarg);
+			if (encoder_params.rc_mode < 0) {
+				usage(argc, argv);
+				exit(1);
+			}
+			break;
+		case 5:
+			encoder_params.h264_entropy_mode = atoi(optarg) ? 1: 0;
+			break;
+		case 6:
+			encoder_params.h264_profile = encoder_string_to_profile(optarg);
+			if (encoder_params.h264_profile < 0) {
+				usage(argc, argv);
+				exit(1);
+			}
+			break;
+		case 7:
 			encoder_params.initial_qp = atoi(optarg);
 			break;
-		case 'Q':
+		case 8:
 			encoder_params.minimal_qp = atoi(optarg);
 			break;
 		case 'r':
