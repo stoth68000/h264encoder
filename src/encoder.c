@@ -2127,7 +2127,7 @@ static int print_input()
 	printf("INPUT: IpPeriod     : %d\n", ip_period);
 	printf("INPUT: Initial QP   : %d\n", initial_qp);
 	printf("INPUT: Min QP       : %d\n", minimal_qp);
-	printf("INPUT: Coded Clip   : %s\n", encoder_nalOutputFilename);
+	printf("INPUT: Coded Clip   : %s\n", encoder_nalOutputFilename ? encoder_nalOutputFilename : "N/A");
 	printf("\n\n");		/* return back to startpoint */
 
 	return 0;
