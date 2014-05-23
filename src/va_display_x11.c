@@ -91,7 +91,7 @@ ensure_window(unsigned int width, unsigned int height)
     return 1;
 }
 
-static inline bool
+static bool
 validate_rect(const VARectangle *rect)
 {
     return (rect            &&
