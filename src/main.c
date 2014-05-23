@@ -75,7 +75,7 @@ static void usage(int argc, char **argv)
 	       );
 }
 
-static const char short_options[] = "b:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:Q:";
+static const char short_options[] = "b:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
 	{ "bitrate", required_argument, NULL, 'b' },
