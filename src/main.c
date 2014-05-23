@@ -46,6 +46,7 @@ static void usage(int argc, char **argv)
 		"-i, --ipaddress=a.b.c.d       Remote IP RTP address\n"
 		"-p, --ipport=9999             Remote IP RTP port\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
+		"    --packet-size=XXX         Use an alternate packet size\n"
 		"-f, --v4lframerate=FPS        Framerate [no limit]\n"
 		"-n, --v4lnumerator=NUM        Numerator [no limit]\n"
 		"-I, --v4linput <number>       Select video inputnr #0-3 on video device [def: 0]\n"
@@ -104,6 +105,7 @@ static const struct option long_options[] = {
 	{ "initial_qp", required_argument, NULL, 7 },
 	{ "minimal_qp", required_argument, NULL, 8 },
 	{ "dscp", required_argument, NULL, 9 },
+	{ "packet-size", required_argument, NULL, 10 },
 
 	{ 0, 0, 0, 0}
 };
@@ -112,7 +114,7 @@ int main(int argc, char **argv)
 {
 	struct encoder_params_s encoder_params;
 	char *ipaddress = "192.168.0.67";
-	int ipport = 0, dscp = 0;
+	int ipport = 0, dscp = 0, pktsize = 0;
 	int videoinputnr = 0;
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
@@ -218,6 +220,9 @@ int main(int argc, char **argv)
 		case 9:
 			dscp = atoi(optarg);
 			break;
+		case 10:
+			pktsize = atoi(optarg);
+			break;
 		case 'W':
 			width = atoi(optarg);
 			break;
@@ -313,7 +318,7 @@ int main(int argc, char **argv)
 
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
 	if (((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) || (capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
-	    ipport && (initESHandler(ipaddress, ipport, dscp, width, height, g_V4LFrameRate) < 0)) {
+	    ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, g_V4LFrameRate) < 0)) {
 		printf("Error: ES2TS init failed\n");
 		goto rtp_failed;
 	}

@@ -15,7 +15,7 @@ static AVFormatContext *tsav_ctx = NULL;
 static AVOutputFormat *tsav_fmt = NULL;
 static AVStream *tsav_strm = NULL;
 
-static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int w, int h, int fps)
+static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int h, int fps)
 {
 	char filename[64];
 
@@ -35,7 +35,8 @@ static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int w, int 
 	tsav_ctx->oformat = tsav_fmt;
 
 	/* try to open the RTP stream */
-	snprintf(filename, sizeof(filename), "rtp://%s:%d?dscp=%d", ipaddress, port, dscp);
+	snprintf(filename, sizeof(filename), "rtp://%s:%d?dscp=%d&pkt_size=%d", ipaddress, port,
+		 dscp, pktsize?pktsize:-1);
 	printf("Streaming to %s\n", filename);
 	if (avio_open(&(tsav_ctx->pb), filename, AVIO_FLAG_WRITE) < 0) {
 		printf("Couldn't open RTP output stream\n");
@@ -149,11 +150,11 @@ int sendESPacket(unsigned char *nal, int len)
 	return 0;
 }
 
-int initESHandler(char *ipaddress, int port, int dscp, int w, int h, int fps)
+int initESHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int h, int fps)
 {
 	int ret;
 
-	ret = es2ts_initRTPHandler(ipaddress, port, dscp, w, h, fps);
+	ret = es2ts_initRTPHandler(ipaddress, port, dscp, pktsize, w, h, fps);
 	if (ret < 0)
 		return -1;
 
