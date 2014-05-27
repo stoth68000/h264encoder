@@ -5,6 +5,7 @@ convert -size 1280x768 pal:1280x768.000047_yuy2.bin new.bmp
 
 # Convert BMP to YOU2 for static fixed frames
 convert NTSC_Test_Pattern.bmp -size 720x480 pal:outputfile.bin
+hexdump -vC outputfile.bin | cut -c11-58 | sed 's!  ! !g' | sed 's! !, 0x!g' | sed 's!$!,!g' | sed 's!^!0x!g' >array.c
 
 # Try h264encoder using the IPCVIDEO PIPELINE, output nals to a temporary file (-o)
 ./h264encoder -W 1280 -H 768 -i 192.168.0.67 -p 9998 -b 3000000 -M 1 -f 30 -o stream.nals
