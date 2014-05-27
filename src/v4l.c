@@ -109,7 +109,7 @@ static int read_frame(void)
 	}
 
 	if (g_syncStall && (!g_signalLocked)) {
-		/* 200ms sleep if we're not locked.
+		/* 30ms sleep if we're not locked.
 		 * prevent constant queries from absorbing all the cpu
 		 */
 		usleep(30 * 1000);
