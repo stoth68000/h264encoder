@@ -41,6 +41,7 @@ unsigned int width = 720;
 unsigned int height = 480;
 unsigned int g_V4LNumerator = 0;
 unsigned int g_V4LFrameRate = 0;
+static unsigned int g_inputnr = 0;
 
 static struct buffer *buffers = NULL;
 static unsigned int n_buffers = 0;
@@ -435,6 +436,7 @@ void init_v4l_device(int inputnr)
 		printf(" set input failed\n");
 		exit(EXIT_FAILURE);
 	}
+	g_inputnr = inputnr;
 
 	switch (io) {
 	case IO_METHOD_READ:
