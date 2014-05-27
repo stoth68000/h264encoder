@@ -704,6 +704,8 @@ char *encoder_profile_to_string(int profile)
 	switch (profile) {
 	case VAProfileH264Baseline:
 		return "BP";
+	case VAProfileH264ConstrainedBaseline:
+		return "CBP";
 	case VAProfileH264Main:
 		return "MP";
 	case VAProfileH264High:
@@ -719,6 +721,8 @@ int encoder_string_to_profile(char *str)
 
 	if (!strncmp(str, "BP", 2))
 		ret = VAProfileH264Baseline;
+	else if (!strncmp(str, "CBP", 3))
+		ret = VAProfileH264ConstrainedBaseline;
 	else if (!strncmp(str, "MP", 2))
 		ret = VAProfileH264Main;
 	else if (!strncmp(str, "HP", 2))

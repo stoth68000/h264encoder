@@ -65,7 +65,7 @@ static void usage(int argc, char **argv)
 		"    --ip_period <number>      [def: %d]\n"
 		"    --rcmode <NONE|CBR|VBR|VCM|CQP|VBR_CONTRAINED> [def: %s]\n"
 		"    --entropy <0|1>, 1 means cabac, 0 cavlc [def: %d]\n"
-		"    --profile <BP|MP|HP>      [def: %s]\n",
+		"    --profile <BP|CBP|MP|HP>  [def: %s]\n",
 			p.initial_qp,
 			p.minimal_qp,
 			p.intra_period,
