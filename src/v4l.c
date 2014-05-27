@@ -101,9 +101,11 @@ static int read_frame(void)
 		if (0 == xioctl(fd, VIDIOC_ENUMINPUT, &i)) {
 			if ((g_signalLocked == 1) && (i.status & V4L2_IN_ST_NO_SIGNAL)) {
 				g_signalLocked = 0;
+				printf("V4L signal unlocked\n");
 			} else
 			if ((g_signalLocked == 0) && ((i.status & V4L2_IN_ST_NO_SIGNAL) == 0)) {
 				g_signalLocked = 1;
+				printf("V4L signal locked\n");
 			}
 		}
 	}
