@@ -49,6 +49,7 @@ static void usage(int argc, char **argv)
 		"    --packet-size=XXX         Use an alternate packet size\n"
 		"-f, --v4lframerate=FPS        Framerate [no limit]\n"
 		"-n, --v4lnumerator=NUM        Numerator [no limit]\n"
+		"    --v4lsyncstall <number>   Stop encoding if V4L input loses sync 0:false 1:true [def: 0]\n"
 		"-I, --v4linput <number>       Select video inputnr #0-3 on video device [def: 0]\n"
 		"-W, --dev-width <number>      Device width [720]\n"
 		"-H, --dev-height <number>     Device height [480]\n"
@@ -106,6 +107,7 @@ static const struct option long_options[] = {
 	{ "minimal_qp", required_argument, NULL, 8 },
 	{ "dscp", required_argument, NULL, 9 },
 	{ "packet-size", required_argument, NULL, 10 },
+	{ "v4lsyncstall", required_argument, NULL, 11 },
 
 	{ 0, 0, 0, 0}
 };
@@ -118,6 +120,7 @@ int main(int argc, char **argv)
 	int videoinputnr = 0;
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
+	int syncstall = 0;
 
 	encoder_param_defaults(&encoder_params);
 
@@ -223,6 +226,9 @@ int main(int argc, char **argv)
 		case 10:
 			pktsize = atoi(optarg);
 			break;
+		case 11:
+			syncstall = atoi(optarg);
+			break;
 		case 'W':
 			width = atoi(optarg);
 			break;
@@ -247,8 +253,9 @@ int main(int argc, char **argv)
 		else
 			encoder_params.deinterlacemode = req_deint_mode;
 
-		printf("V4L Capture: %dx%d %d/%d [input: %d]\n", width, height,
-			g_V4LNumerator, g_V4LFrameRate, videoinputnr);
+		printf("V4L Capture: %dx%d %d/%d [input: %d] [syncstall: %s]\n", width, height,
+			g_V4LNumerator, g_V4LFrameRate, videoinputnr,
+			syncstall ? "true" : "false");
 	}
 
 	if (capturemode == CM_IPCVIDEO)
@@ -269,7 +276,7 @@ int main(int argc, char **argv)
 
 	if (capturemode == CM_V4L) {
 		open_v4l_device();
-		init_v4l_device(videoinputnr);
+		init_v4l_device(videoinputnr, syncstall);
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 60;
 	}

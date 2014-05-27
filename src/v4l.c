@@ -42,6 +42,9 @@ unsigned int height = 480;
 unsigned int g_V4LNumerator = 0;
 unsigned int g_V4LFrameRate = 0;
 static unsigned int g_inputnr = 0;
+static unsigned int g_signalCount = 0;
+static unsigned int g_signalLocked = 1;
+static unsigned int g_syncStall;
 
 static struct buffer *buffers = NULL;
 static unsigned int n_buffers = 0;
@@ -88,6 +91,31 @@ static int read_frame(void)
 {
 	struct v4l2_buffer buf;
 	unsigned int i;
+
+	/* Periodically check the signal status, every 2 seconds or so */
+	if (g_syncStall && (g_signalCount++ == 60)) {
+		g_signalCount = 0;
+
+		struct v4l2_input i;
+		i.index = g_inputnr;
+		if (0 == xioctl(fd, VIDIOC_ENUMINPUT, &i)) {
+			if ((g_signalLocked == 1) && (i.status & V4L2_IN_ST_NO_SIGNAL)) {
+				g_signalLocked = 0;
+			} else
+			if ((g_signalLocked == 0) && ((i.status & V4L2_IN_ST_NO_SIGNAL) == 0)) {
+				g_signalLocked = 1;
+			}
+		}
+	}
+
+	if (g_syncStall && (!g_signalLocked)) {
+		/* 200ms sleep if we're not locked.
+		 * prevent constant queries from absorbing all the cpu
+		 */
+		usleep(30 * 1000);
+		return 0;
+	}
+
 	switch (io) {
 	case IO_METHOD_READ:
 		if (-1 == read(fd, buffers[0].start, buffers[0].length)) {
@@ -409,7 +437,7 @@ static void init_userp(unsigned int buffer_size)
 	}
 }
 
-void init_v4l_device(int inputnr)
+void init_v4l_device(int inputnr, int syncstall)
 {
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
@@ -417,6 +445,8 @@ void init_v4l_device(int inputnr)
 	struct v4l2_format fmt;
 	unsigned int min;
 	int i, k, l;
+
+	g_syncStall = syncstall;
 
 	if (-1 == xioctl(fd, VIDIOC_QUERYCAP, &cap)) {
 		if (EINVAL == errno) {
