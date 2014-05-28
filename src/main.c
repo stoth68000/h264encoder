@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libes2ts/es2ts.h>
+
 #include "rtp.h"
 #include "v4l.h"
 #include "ipcvideo.h"
@@ -77,9 +79,10 @@ static void usage(int argc, char **argv)
 	       );
 }
 
-static const char short_options[] = "b:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:";
+static const char short_options[] = "vb:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
+	{ "verbose", no_argument, NULL, 'v' },
 	{ "bitrate", required_argument, NULL, 'b' },
 	{ "device", required_argument, NULL, 'd' },
 	{ "ipaddress", required_argument, NULL, 'i' },
@@ -135,6 +138,9 @@ int main(int argc, char **argv)
 
 		switch (c) {
 		case 0:	/* getopt_long() flag */
+			break;
+		case 'v':
+			es2ts_debug = 1;
 			break;
 		case 'b':
 			encoder_params.frame_bitrate = atoi(optarg);
