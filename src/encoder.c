@@ -1848,10 +1848,8 @@ static int save_codeddata(unsigned long long display_order,
 			frame_time[frame_number%2].tv_sec,
 			frame_time[frame_number%2].tv_usec,
 			(frame_number == 0)?0:
-			frame_time[frame_number%2].tv_sec*1000 +
-			frame_time[frame_number%2].tv_usec/1000 -
-			frame_time[(frame_number+1)%2].tv_sec*1000 +
-			frame_time[(frame_number+1)%2].tv_usec/1000,
+			(frame_time[frame_number%2].tv_sec - frame_time[(frame_number+1)%2].tv_sec)*1000 +
+			(frame_time[frame_number%2].tv_usec - frame_time[(frame_number+1)%2].tv_usec)/1000,
 			frame_size);
 		frame_number++;
 	}
