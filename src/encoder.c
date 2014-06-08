@@ -1839,6 +1839,9 @@ static int save_codeddata(unsigned long long display_order,
 	vaUnmapBuffer(va_dpy, coded_buf[display_order % SURFACE_NUM]);
 
 	if (csv_fp) {
+		if (frame_number == 0) {
+			fprintf(csv_fp, "number,time,delta,size\n");
+		}
 		gettimeofday(&frame_time[frame_number%2], NULL);
 		fprintf(csv_fp, "%lu,%010ld.%05ld,%ld,%u\n",
 			frame_number,
