@@ -129,6 +129,7 @@ static int h264_entropy_mode = 1;	/* cabac */
 static unsigned int encoder_frame_bitrate = 3000000;
 
 static FILE *nal_fp = NULL;
+FILE *csv_fp = NULL;
 
 static int frame_width = 176;
 static int frame_height = 144;
@@ -1809,6 +1810,9 @@ static int render_slice(void)
 static int save_codeddata(unsigned long long display_order,
 			  unsigned long long encode_order)
 {
+	static unsigned long frame_number = 0;
+	static struct timeval frame_time[2] = { { 0, 0 }, { 0, 0 } };
+	static
 	VACodedBufferSegment *buf_list = NULL;
 	VAStatus va_status;
 	unsigned int coded_size = 0;
@@ -1832,6 +1836,20 @@ static int save_codeddata(unsigned long long display_order,
 
 		buf_list = (VACodedBufferSegment *) buf_list->next;
 		frame_size += coded_size;
+		if (csv_fp) {
+			gettimeofday(&frame_time[frame_number%2], NULL);
+			fprintf(csv_fp, "%lu,%010ld.%05ld,%ld,%u\n",
+				frame_number,
+				frame_time[frame_number%2].tv_sec,
+				frame_time[frame_number%2].tv_usec,
+				(frame_number == 0)?0:
+				frame_time[frame_number%2].tv_sec*1000 +
+				frame_time[frame_number%2].tv_usec/1000 -
+				frame_time[(frame_number+1)%2].tv_sec*1000 +
+				frame_time[(frame_number+1)%2].tv_usec/1000,
+				coded_size);
+			frame_number++;
+		}
 	}
 	vaUnmapBuffer(va_dpy, coded_buf[display_order % SURFACE_NUM]);
 

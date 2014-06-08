@@ -45,6 +45,7 @@ static void usage(int argc, char **argv)
 		"-b, --bitrate <number>        Encoding bitrate [def: %d]\n"
 		"-d, --device=NAME             Video device name [/dev/video0]\n"
 		"-o, --output=filename         Record raw nals to output file\n"
+		"-O, --csv=filename            Record output frames to a file\n"
 		"-i, --ipaddress=a.b.c.d       Remote IP RTP address\n"
 		"-p, --ipport=9999             Remote IP RTP port\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
@@ -79,7 +80,7 @@ static void usage(int argc, char **argv)
 	       );
 }
 
-static const char short_options[] = "vb:d:i:o:p:hmruD:Pf:n:W:H:M:I:Z:D:";
+static const char short_options[] = "vb:d:i:o:O:p:hmruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
 	{ "verbose", no_argument, NULL, 'v' },
@@ -90,6 +91,7 @@ static const struct option long_options[] = {
 	{ "help", no_argument, NULL, 'h' },
 	{ "mmap", no_argument, NULL, 'm' },
 	{ "output", required_argument, NULL, 'o' },
+	{ "csv", required_argument, NULL, 'O' },
 	{ "read", no_argument, NULL, 'r' },
 	{ "userp", no_argument, NULL, 'u' },
 	{ "progressive", no_argument, NULL, 'P' },
@@ -176,6 +178,13 @@ int main(int argc, char **argv)
 			break;
 		case 'o':
 			encoder_nalOutputFilename = optarg;
+			break;
+		case 'O':
+			csv_fp = fopen(optarg, "w");
+			if (csv_fp == NULL) {
+				printf("Error: unable to open %s: %m\n", optarg);
+				exit(1);
+			}
 			break;
 		case 1:
 			encoder_params.intra_period = atoi(optarg);

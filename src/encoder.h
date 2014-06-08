@@ -20,6 +20,8 @@ struct encoder_params_s
 	unsigned int frame_bitrate;
 };
 
+extern FILE *csv_fp;
+
 int  encoder_init(struct encoder_params_s *params);
 void encoder_param_defaults(struct encoder_params_s *p);
 void encoder_close();
