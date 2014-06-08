@@ -1811,7 +1811,7 @@ static int save_codeddata(unsigned long long display_order,
 {
 	static unsigned long frame_number = 0;
 	static struct timeval frame_time[2] = { { 0, 0 }, { 0, 0 } };
-	static unsigned int frame_size = 0;
+	unsigned int frame_size = 0;
 	VACodedBufferSegment *buf_list = NULL;
 	VAStatus va_status;
 	unsigned int coded_size = 0;
