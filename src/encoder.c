@@ -142,7 +142,6 @@ static unsigned int frame_count = 60;
 static unsigned long long frames_processed = 0;
 extern unsigned int encoder_frame_bitrate;
 static unsigned int frame_slices = 1;
-static double frame_size = 0;
 static int initial_qp = 26;
 static int minimal_qp = 0;
 static int intra_period = 30;
@@ -1812,7 +1811,7 @@ static int save_codeddata(unsigned long long display_order,
 {
 	static unsigned long frame_number = 0;
 	static struct timeval frame_time[2] = { { 0, 0 }, { 0, 0 } };
-	static
+	static unsigned int frame_size = 0;
 	VACodedBufferSegment *buf_list = NULL;
 	VAStatus va_status;
 	unsigned int coded_size = 0;
@@ -1836,22 +1835,23 @@ static int save_codeddata(unsigned long long display_order,
 
 		buf_list = (VACodedBufferSegment *) buf_list->next;
 		frame_size += coded_size;
-		if (csv_fp) {
-			gettimeofday(&frame_time[frame_number%2], NULL);
-			fprintf(csv_fp, "%lu,%010ld.%05ld,%ld,%u\n",
-				frame_number,
-				frame_time[frame_number%2].tv_sec,
-				frame_time[frame_number%2].tv_usec,
-				(frame_number == 0)?0:
-				frame_time[frame_number%2].tv_sec*1000 +
-				frame_time[frame_number%2].tv_usec/1000 -
-				frame_time[(frame_number+1)%2].tv_sec*1000 +
-				frame_time[(frame_number+1)%2].tv_usec/1000,
-				coded_size);
-			frame_number++;
-		}
 	}
 	vaUnmapBuffer(va_dpy, coded_buf[display_order % SURFACE_NUM]);
+
+	if (csv_fp) {
+		gettimeofday(&frame_time[frame_number%2], NULL);
+		fprintf(csv_fp, "%lu,%010ld.%05ld,%ld,%u\n",
+			frame_number,
+			frame_time[frame_number%2].tv_sec,
+			frame_time[frame_number%2].tv_usec,
+			(frame_number == 0)?0:
+			frame_time[frame_number%2].tv_sec*1000 +
+			frame_time[frame_number%2].tv_usec/1000 -
+			frame_time[(frame_number+1)%2].tv_sec*1000 +
+			frame_time[(frame_number+1)%2].tv_usec/1000,
+			frame_size);
+		frame_number++;
+	}
 
 	printf("\r      ");	/* return back to startpoint */
 	switch (encode_order % 4) {
