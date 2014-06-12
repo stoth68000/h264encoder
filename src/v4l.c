@@ -615,6 +615,11 @@ void init_v4l_device(int inputnr, int syncstall)
 		printf("vidioc_s_parm set: frate=%d/%d\n",
 		       capp.parm.capture.timeperframe.numerator,
 		       capp.parm.capture.timeperframe.denominator);
+#if 0
+		/* KL: Disabled
+		 * CX23885 set framerate call fails, driver doesn't support anything
+		 * other than its default, and the API isn't implemented.
+		 */
 		if (-1 == (xioctl(fd, VIDIOC_S_PARM, &capp) == -1)) {
 			errno_exit("VIDIOC_S_PARM");
 		}
@@ -626,6 +631,7 @@ void init_v4l_device(int inputnr, int syncstall)
 			g_V4LFrameRate)) {
 			errno_exit("VIDIOC_S_PARM NOT SET");
 		}
+#endif
 	} else {
 		if (-1 == (xioctl(fd, VIDIOC_G_PARM, &capp) == -1)) {
 			errno_exit("VIDIOC_G_PARM");
