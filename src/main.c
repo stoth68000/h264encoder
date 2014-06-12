@@ -68,7 +68,8 @@ static void usage(int argc, char **argv)
 		"    --ip_period <number>      [def: %d]\n"
 		"    --rcmode <NONE|CBR|VBR|VCM|CQP|VBR_CONSTRAINED> [def: %s]\n"
 		"    --entropy <0|1>, 1 means cabac, 0 cavlc [def: %d]\n"
-		"    --profile <BP|CBP|MP|HP>  [def: %s]\n",
+		"    --profile <BP|CBP|MP|HP>  [def: %s]\n"
+		"    --payloadmode <0|1>, 0 means RTP/TS, 1 RTP/ES [def: 0]\n",
 			p.initial_qp,
 			p.minimal_qp,
 			p.intra_period,
@@ -113,6 +114,7 @@ static const struct option long_options[] = {
 	{ "dscp", required_argument, NULL, 9 },
 	{ "packet-size", required_argument, NULL, 10 },
 	{ "v4lsyncstall", required_argument, NULL, 11 },
+	{ "payloadmode", required_argument, NULL, 12 },
 
 	{ 0, 0, 0, 0}
 };
@@ -126,6 +128,10 @@ int main(int argc, char **argv)
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
 	int syncstall = 0;
+	enum payloadMode_e {
+		PAYLOAD_RTP_TS = 0,
+		PAYLOAD_RTP_ES
+	} payloadMode = PAYLOAD_RTP_TS;
 
 	encoder_param_defaults(&encoder_params);
 
@@ -244,6 +250,9 @@ int main(int argc, char **argv)
 		case 11:
 			syncstall = atoi(optarg);
 			break;
+		case 12:
+			payloadMode = (enum payloadMode_e)atoi(optarg) & 1;
+			break;
 		case 'W':
 			width = atoi(optarg);
 			break;
@@ -258,6 +267,12 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	printf("RTP Payload: ");
+	if (payloadMode == 0)
+		printf("TS\n");
+	else
+		printf("ES\n");
 
 	if ((capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K))
 		encoder_params.enable_osd = 1;
@@ -328,8 +343,8 @@ int main(int argc, char **argv)
 		goto encoder_failed;
 	}
 
-	/* Open the 'nals via rtp' mechanism if requested, but only for the internal GL demo app */
 #if 0
+	/* Open the 'nals via rtp' mechanism if requested, but only for the internal GL demo app */
 	if (
 		(capturemode == CM_OPENGL) &&
 		ipport && (initRTPHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0)) {
@@ -338,9 +353,25 @@ int main(int argc, char **argv)
 	}
 #endif
 
+	/* TODO: Convert the RTP output mechanisms into a single interface and instantiate a common API.  */
+	/* TODO: Convert the Input modules into a single interface and instantiate a common capture API. */
+
+	/* RPT/ES , routed out via RTP */
+	if ((payloadMode == PAYLOAD_RTP_ES) &&
+		((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) ||
+		(capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
+		ipport && (initRTPHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0))
+	{
+		printf("Error: RTP init failed\n");
+		goto rtp_failed;
+	}
+
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
-	if (((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) || (capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
-	    ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, g_V4LFrameRate) < 0)) {
+	if ((payloadMode == PAYLOAD_RTP_TS) &&
+		((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) ||
+		(capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
+		ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, g_V4LFrameRate) < 0))
+	{
 		printf("Error: ES2TS init failed\n");
 		goto rtp_failed;
 	}
