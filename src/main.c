@@ -41,7 +41,9 @@ static void usage(int argc, char **argv)
 	printf("Usage:\n"
 		"\n"
 		"Options:\n"
-		"-h, --help                    Print this message\n"
+	        "-h, --help                    Print this message\n"
+	        "-v, --verbose                 Log debugging messages\n"
+	        "-q, --quiet                   Don't display progress indicator\n"
 		"-b, --bitrate <number>        Encoding bitrate [def: %d]\n"
 		"-d, --device=NAME             Video device name [/dev/video0]\n"
 		"-o, --output=filename         Record raw nals to output file\n"
@@ -81,10 +83,11 @@ static void usage(int argc, char **argv)
 	       );
 }
 
-static const char short_options[] = "vb:d:i:o:O:p:hmruD:Pf:n:W:H:M:I:Z:D:";
+static const char short_options[] = "vqb:d:i:o:O:p:hmruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
 	{ "verbose", no_argument, NULL, 'v' },
+	{ "quiet", no_argument, NULL, 'q' },
 	{ "bitrate", required_argument, NULL, 'b' },
 	{ "device", required_argument, NULL, 'd' },
 	{ "ipaddress", required_argument, NULL, 'i' },
@@ -149,6 +152,9 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			es2ts_debug = 1;
+			break;
+		case 'q':
+			quiet_encode = 1;
 			break;
 		case 'b':
 			encoder_params.frame_bitrate = atoi(optarg);

@@ -131,6 +131,8 @@ static unsigned int encoder_frame_bitrate = 3000000;
 static FILE *nal_fp = NULL;
 FILE *csv_fp = NULL;
 
+int quiet_encode = 0;
+
 static int frame_width = 176;
 static int frame_height = 144;
 static int frame_osd = 0;
@@ -1854,23 +1856,25 @@ static int save_codeddata(unsigned long long display_order,
 		frame_number++;
 	}
 
-	printf("\r      ");	/* return back to startpoint */
-	switch (encode_order % 4) {
-	case 0:
-		printf("|");
-		break;
-	case 1:
-		printf("/");
-		break;
-	case 2:
-		printf("-");
-		break;
-	case 3:
-		printf("\\");
-		break;
+	if (!quiet_encode) {
+		printf("\r      ");	/* return back to startpoint */
+		switch (encode_order % 4) {
+		case 0:
+			printf("|");
+			break;
+		case 1:
+			printf("/");
+			break;
+		case 2:
+			printf("-");
+			break;
+		case 3:
+			printf("\\");
+			break;
+		}
+		printf("%08lld", encode_order);
+		printf("(%06d bytes coded)", coded_size);
 	}
-	printf("%08lld", encode_order);
-	printf("(%06d bytes coded)", coded_size);
 
 	fflush(nal_fp);
 

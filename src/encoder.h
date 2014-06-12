@@ -21,6 +21,7 @@ struct encoder_params_s
 };
 
 extern FILE *csv_fp;
+extern int quiet_encode;
 
 int  encoder_init(struct encoder_params_s *params);
 void encoder_param_defaults(struct encoder_params_s *p);
