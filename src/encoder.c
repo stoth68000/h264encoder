@@ -896,10 +896,10 @@ static int init_vpp(struct encoder_params_s *params)
 
 	printf("Platform supports LIBVA VideoPostProcessing? : %s\n", supportsVideoProcessing ? "True" : "False");
 	if (!supportsVideoProcessing)
-		return -1;
+		return 0;
 
 	if (IS_YUY2(params) && (vpp_deinterlace_mode == 0))
-		return -1;
+		return 0;
 
 	/* one-time - Config/context creation for VPP interaction */
 	for (int i = 0; i < VAProcFilterCount; i++) {
