@@ -32,6 +32,8 @@ h264encoder_SOURCES = \
 	rtp.h \
 	v4l.c \
 	v4l.h \
+	csc.c \
+	csc.h \
 	fixed.c \
 	fixed.h \
 	fixed-frame.h \

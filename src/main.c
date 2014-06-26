@@ -312,7 +312,7 @@ int main(int argc, char **argv)
 
 	if (capturemode == CM_V4L) {
 		open_v4l_device();
-		init_v4l_device(videoinputnr, syncstall);
+		init_v4l_device(&encoder_params, videoinputnr, syncstall);
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 60;
 	}
@@ -325,19 +325,19 @@ int main(int argc, char **argv)
 			g_V4LFrameRate = 30;
 
 		/* Init the ipc video pipe and extract resolution details */
-		ipcvideo_init_device(&width, &height, g_V4LFrameRate);
+		ipcvideo_init_device(&encoder_params, &width, &height, g_V4LFrameRate);
 	}
 	if (capturemode == CM_FIXED) {
 		fixed_open_device();
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 30;
-		fixed_init_device(&width, &height, g_V4LFrameRate);
+		fixed_init_device(&encoder_params, &width, &height, g_V4LFrameRate);
 	}
 	if (capturemode == CM_FIXED_4K) {
 		fixed_4k_open_device();
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 30;
-		fixed_4k_init_device(&width, &height, g_V4LFrameRate);
+		fixed_4k_init_device(&encoder_params, &width, &height, g_V4LFrameRate);
 	}
 
 	printf("Using frame resolution: %dx%d\n", width, height);
@@ -406,7 +406,7 @@ int main(int argc, char **argv)
 		fixed_4k_stop_capturing();
 	}
 
-	encoder_close();
+	encoder_close(&encoder_params);
 
 	freeESHandler();
 

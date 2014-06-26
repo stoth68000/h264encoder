@@ -14,6 +14,7 @@ static int fixedWidth;
 static int fixedHeight;
 static int fixedLength;
 static unsigned char *frame = 0;
+static struct encoder_params_s *encoder_params = 0;
 
 static unsigned int measureElapsedMS(struct timeval *then)
 {
@@ -37,7 +38,7 @@ static void fixed_process_image(const void *p, ssize_t size)
 		return;
 	}
 
-	if (!encoder_encode_frame((unsigned char *)p))
+	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -81,11 +82,12 @@ void fixed_4k_uninit_device(void)
 	free(frame);
 }
 
-void fixed_4k_init_device(unsigned int *width, unsigned int *height, int fps)
+int fixed_4k_init_device(struct encoder_params_s *p, unsigned int *width, unsigned int *height, int fps)
 {
 	*width = fixedWidth;
 	*height = fixedHeight;
 	ipcFPS = fps;
+	encoder_params = p;
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
 	/* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
@@ -95,6 +97,10 @@ void fixed_4k_init_device(unsigned int *width, unsigned int *height, int fps)
 		ipcFPS, ipcResubmitTimeoutMS);
 
 	frame = malloc(fixedLength);
+
+	encoder_params->input_fourcc = E_FOURCC_YUY2;
+
+	return 0;
 }
 
 void fixed_4k_close_device(void)

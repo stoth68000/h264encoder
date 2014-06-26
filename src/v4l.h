@@ -1,3 +1,4 @@
+#include "encoder.h"
 
 typedef enum {
         IO_METHOD_READ,
@@ -18,7 +19,7 @@ void v4l_mainloop(void);
 void stop_v4l_capturing(void);
 void start_v4l_capturing(void);
 void uninit_v4l_device(void);
-void init_v4l_device(int inputnr, int syncstall);
+int init_v4l_device(struct encoder_params_s *params, int inputnr, int syncstall);
 void close_v4l_device(void);
 void open_v4l_device(void);
 

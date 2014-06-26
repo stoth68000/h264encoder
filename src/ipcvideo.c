@@ -10,6 +10,7 @@ static int ipcResubmitTimeoutMS = 0;
 
 static struct ipcvideo_s *ctx = 0;
 static struct ipcvideo_dimensions_s ipc_dimensions;
+static struct encoder_params_s *encoder_params = 0;
 
 static unsigned int measureElapsedMS(struct timeval *then)
 {
@@ -27,13 +28,22 @@ static unsigned int measureElapsedMS(struct timeval *then)
  */
 static void ipcvideo_process_image(const void *p, ssize_t size)
 {
-	ssize_t src_frame_size = ((ipc_dimensions.width * 2) * ipc_dimensions.height); /* YUY2 */
-	if (size != src_frame_size) {
-		printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
-		return;
+	if (encoder_params->input_fourcc == E_FOURCC_YUY2) {
+		ssize_t src_frame_size = ((ipc_dimensions.width * 2) * ipc_dimensions.height); /* YUY2 */
+		if (size != src_frame_size) {
+			printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
+			return;
+		}
+	} else
+	if (encoder_params->input_fourcc == E_FOURCC_BGRX) {
+		ssize_t src_frame_size = ((ipc_dimensions.width * 4) * ipc_dimensions.height); /* YUY2 */
+		if (size != src_frame_size) {
+			printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
+			return;
+		}
 	}
 
-	if (!encoder_encode_frame((unsigned char *)p))
+	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -122,11 +132,12 @@ void ipcvideo_uninit_device(void)
 	}
 }
 
-void ipcvideo_init_device(int *width, int *height, int fps)
+int ipcvideo_init_device(struct encoder_params_s *p, int *width, int *height, int fps)
 {
 	*width = ipc_dimensions.width;
 	*height = ipc_dimensions.height;
 	ipcFPS = fps;
+	encoder_params = p;
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
 	/* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
@@ -135,6 +146,9 @@ void ipcvideo_init_device(int *width, int *height, int fps)
 		ipc_dimensions.width,
 		ipc_dimensions.height,
 		ipcFPS, ipcResubmitTimeoutMS);
+
+	encoder_params->input_fourcc = E_FOURCC_BGRX;
+	return 0;
 }
 
 void ipcvideo_close_device(void)

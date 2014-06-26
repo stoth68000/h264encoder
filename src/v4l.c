@@ -52,6 +52,7 @@ static char device_settings_buffer[255];
 static char *device_settings = NULL;
 static int fd = -1;
 static unsigned int pixelformat = V4L2_PIX_FMT_YUYV;
+static struct encoder_params_s *encoder_params = 0;
 
 #define EXIT_FAILURE 1
 
@@ -83,7 +84,7 @@ static void v4l_process_image(const void *p, ssize_t size)
 		       src_frame_size);
 		return;
 	}
-	if (!encoder_encode_frame((unsigned char *)p))
+	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -439,7 +440,7 @@ static void init_userp(unsigned int buffer_size)
 	}
 }
 
-void init_v4l_device(int inputnr, int syncstall)
+int init_v4l_device(struct encoder_params_s *p, int inputnr, int syncstall)
 {
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
@@ -447,6 +448,9 @@ void init_v4l_device(int inputnr, int syncstall)
 	struct v4l2_format fmt;
 	unsigned int min;
 	int i, k, l;
+
+	encoder_params = p;
+	encoder_params->input_fourcc = E_FOURCC_YUY2;
 
 	g_syncStall = syncstall;
 
@@ -656,6 +660,8 @@ void init_v4l_device(int inputnr, int syncstall)
 		init_userp(fmt.fmt.pix.sizeimage);
 		break;
 	}
+
+	return 0;
 }
 
 void close_v4l_device(void)

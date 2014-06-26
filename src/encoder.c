@@ -43,17 +43,15 @@
 #include "encoder.h"
 #include "es2ts.h"
 #include "rtp.h"
+#include "csc.h"
 #include "va_display.h"
 #include "encoder-display.h"
 #include "main.h"
 
 extern char *encoder_nalOutputFilename;
 
-#define CHECK_VASTATUS(va_status,func)                                  \
-    if (va_status != VA_STATUS_SUCCESS) {                               \
-        fprintf(stderr,"%s:%s (%d) failed,exit\n", __func__, func, __LINE__); \
-        exit(1);                                                        \
-    }
+#define IS_YUY2(p) ((p)->input_fourcc == E_FOURCC_YUY2)
+#define IS_BGRX(p) ((p)->input_fourcc == E_FOURCC_BGRX)
 
 #define VAEntrypointMax		10
 
@@ -130,6 +128,9 @@ static unsigned int encoder_frame_bitrate = 3000000;
 
 static FILE *nal_fp = NULL;
 FILE *csv_fp = NULL;
+
+/* Colorspace conversion */
+struct csc_ctx_s csc_ctx;
 
 int quiet_encode = 0;
 
@@ -883,7 +884,7 @@ static void deinit_vpp()
 }
 
 /* Initialize VPP, create the VPP deinterlacer processing pipeline */
-static int init_vpp()
+static int init_vpp(struct encoder_params_s *params)
 {
 	VAEntrypoint entrypoints[VAEntrypointMax] = { 0 };
 	int i, num_entrypoints, supportsVideoProcessing = 0;
@@ -897,7 +898,10 @@ static int init_vpp()
 	}
 
 	printf("Platform supports LIBVA VideoPostProcessing? : %s\n", supportsVideoProcessing ? "True" : "False");
-	if (!supportsVideoProcessing || (vpp_deinterlace_mode == 0))
+	if (!supportsVideoProcessing)
+		return -1;
+
+	if (IS_YUY2(params) && (vpp_deinterlace_mode == 0))
 		return -1;
 
 	/* one-time - Config/context creation for VPP interaction */
@@ -2053,7 +2057,7 @@ static void upload_yuv_to_surface(unsigned char *inbuf, VASurfaceID surface_id,
 	CHECK_VASTATUS(va_status, "vaDestroyImage");
 }
 
-static int encode_YUY2_frame(unsigned char *frame)
+static int encode_frame(struct encoder_params_s *params, unsigned char *frame)
 {
 	unsigned int i;
 	VAStatus va_status;
@@ -2063,25 +2067,37 @@ static int encode_YUY2_frame(unsigned char *frame)
 		/* upload RAW YUV data into all surfaces, so the compressor doesn't assert in our first few
 		 * real frames.
 		 */
-		for (i = 0; i < SURFACE_NUM; i++)
-			upload_yuv_to_surface(frame, src_surface[i], frame_width, frame_height);
+		if (IS_YUY2(params)) {
+			for (i = 0; i < SURFACE_NUM; i++)
+				upload_yuv_to_surface(frame, src_surface[i], frame_width, frame_height);
+		}
+		if (IS_BGRX(params)) {
+			for (i = 0; i < SURFACE_NUM; i++)
+				va_status = csc_convert_rgbdata_to_yuv(&csc_ctx, frame, src_surface[i]);
+		}
 	} else {
-		/* TODO: We probably don't need to specifically upload non de-interlaced content to the
-		 * current slot, it's probably OK to run the stream 1 frame behind live and always
-		 * upload to the same slot regardless of whether VPP is enabled or not.
-		 * IE. Most likely we should always upload to the prior slot.
-		 */
-		if (vpp_deinterlace_mode > 0)
-			upload_yuv_to_surface(frame, src_surface[prior_slot()], frame_width, frame_height);
-		else
-			upload_yuv_to_surface(frame, src_surface[current_slot], frame_width, frame_height);
+		if (IS_BGRX(params)) {
+			/* CSC convert pincoming BGRX frame to yuv output surface */
+			va_status = csc_convert_rgbdata_to_yuv(&csc_ctx, frame, src_surface[current_slot]);
+		} else
+		if (IS_YUY2(params)) {
+			/* TODO: We probably don't need to specifically upload non de-interlaced content to the
+			 * current slot, it's probably OK to run the stream 1 frame behind live and always
+			 * upload to the same slot regardless of whether VPP is enabled or not.
+			 * IE. Most likely we should always upload to the prior slot.
+			 */
+			if (vpp_deinterlace_mode > 0)
+				upload_yuv_to_surface(frame, src_surface[prior_slot()], frame_width, frame_height);
+			else
+				upload_yuv_to_surface(frame, src_surface[current_slot], frame_width, frame_height);
+		}
 	}
 
 	/* Once only - Create the encoding thread */
 	if (encode_syncmode == 0 && (encode_thread == (pthread_t)-1))
 		pthread_create(&encode_thread, NULL, storage_task_thread, NULL);
 
-	if (vpp_deinterlace_mode > 0) {
+	if (IS_YUY2(params) && (vpp_deinterlace_mode > 0)) {
 		/* (input surface, output surface) Take new clean data, merge into current during encoding. */
 		vpp_perform_deinterlace(src_surface[current_slot], frame_width, frame_height, src_surface[next_slot]);
 		vpp_perform_deinterlace(src_surface[prior_slot()], frame_width, frame_height, src_surface[current_slot]);
@@ -2196,6 +2212,14 @@ int encoder_init(struct encoder_params_s *params)
 	assert(params);
 	printf("%s(%d, %d)\n", __func__, params->width, params->height);
 
+	switch (params->input_fourcc) {
+	case E_FOURCC_YUY2:
+	case E_FOURCC_BGRX:
+		break;
+	default:
+		return -1;
+	}
+
 	frame_width = params->width;
 	frame_height = params->height;
 	frame_rate = 30;
@@ -2249,13 +2273,24 @@ int encoder_init(struct encoder_params_s *params)
 	print_input();
 
 	init_va();
-	init_vpp();
+	if (init_vpp(params) < 0) {
+		printf("init_vpp() failed, exit.\n");
+		exit(1);
+	}
+
 	setup_encode();
+
+	if (IS_BGRX(params))
+		csc_alloc(&csc_ctx, va_dpy, vpp_config, vpp_context, params->width, params->height, params->width * 4 /* BGRA */);
+
 	return 0;
 }
 
-void encoder_close()
+void encoder_close(struct encoder_params_s *params)
 {
+	if (IS_BGRX(params))
+		csc_free(&csc_ctx);
+
 	release_encode();
 	deinit_va();
 }
@@ -2273,12 +2308,22 @@ void encoder_param_defaults(struct encoder_params_s *p)
 	p->h264_entropy_mode = 1;
 	p->rc_mode = VA_RC_VBR;
 	p->frame_bitrate = 3000000;
+	p->input_fourcc = E_FOURCC_UNDEFINED;
 }
 
-int encoder_encode_frame(unsigned char *inbuf)
+int encoder_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 {
-	if (!inbuf)
+	if ((!params) || (!inbuf))
 		return 0;
+
+	switch (params->input_fourcc) {
+	case E_FOURCC_YUY2:
+	case E_FOURCC_BGRX:
+		break;
+	default:
+		printf("Fatal, unsupported FOURCC\n");
+		exit(1);
+	}
 
 #if 0
 	/* Grab a frame - we'll use this for the static image */
@@ -2292,7 +2337,7 @@ int encoder_encode_frame(unsigned char *inbuf)
 	}
 #endif
 
-	if (frame_osd) {
+	if (IS_YUY2(params) && frame_osd) {
 		/* Warning: We're going to directly modify the input pixels. In fixed
 		 * frame encoding we'll continuiously overwrite and alter the static
 		 * image. If for any reason our OSD strings below begin to shorten,
@@ -2319,7 +2364,7 @@ int encoder_encode_frame(unsigned char *inbuf)
 		encoder_display_render_string(&display_ctx, (unsigned char*)str, strlen(str), 0, 11);
 	}
 
-	encode_YUY2_frame(inbuf);
+	encode_frame(params, inbuf);
 
 	frames_processed++;
 	return 1;
