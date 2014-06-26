@@ -2278,7 +2278,7 @@ int encoder_init(struct encoder_params_s *params)
 	setup_encode();
 
 	if (IS_BGRX(params))
-		csc_alloc(&csc_ctx, va_dpy, vpp_config, vpp_context, params->width, params->height, params->width * 4 /* BGRA */);
+		csc_alloc(&csc_ctx, va_dpy, vpp_config, vpp_context, params->width, params->height);
 
 	return 0;
 }

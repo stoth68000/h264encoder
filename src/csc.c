@@ -6,7 +6,6 @@
 #include "csc.h"
 #include "encoder.h"
 
-/* Convert ctx->rgb32_surface to ctx->vpp.output (yuv) */
 VAStatus csc_convert_rgbdata_to_yuv(struct csc_ctx_s *ctx, unsigned char *data, VASurfaceID yuv_surface_output)
 {
 	VAProcPipelineParameterBuffer *pipeline_param;
@@ -29,7 +28,7 @@ VAStatus csc_convert_rgbdata_to_yuv(struct csc_ctx_s *ctx, unsigned char *data, 
 		CHECK_VASTATUS(va_status, "vaDestroyImage");
 	}
 
-	va_status = vaMapBuffer(ctx->va_dpy, ctx->vpp.pipeline_buf, (void **)&pipeline_param);
+	va_status = vaMapBuffer(ctx->va_dpy, ctx->vpp_pipeline_buf, (void **)&pipeline_param);
 	CHECK_VASTATUS(va_status, "vaMapBuffer");
 
 	memset(pipeline_param, 0, sizeof *pipeline_param);
@@ -40,16 +39,16 @@ VAStatus csc_convert_rgbdata_to_yuv(struct csc_ctx_s *ctx, unsigned char *data, 
 	pipeline_param->output_background_color = 0xff000000;
 	pipeline_param->output_color_standard   = VAProcColorStandardNone;
 
-	va_status = vaUnmapBuffer(ctx->va_dpy, ctx->vpp.pipeline_buf);
+	va_status = vaUnmapBuffer(ctx->va_dpy, ctx->vpp_pipeline_buf);
 	CHECK_VASTATUS(va_status, "vaUnmapBuffer");
 
-	va_status = vaBeginPicture(ctx->va_dpy, ctx->vpp.ctx, yuv_surface_output);
+	va_status = vaBeginPicture(ctx->va_dpy, ctx->vpp_ctx, yuv_surface_output);
 	CHECK_VASTATUS(va_status, "vaBeginPicture");
 
-	va_status = vaRenderPicture(ctx->va_dpy, ctx->vpp.ctx, &ctx->vpp.pipeline_buf, 1);
+	va_status = vaRenderPicture(ctx->va_dpy, ctx->vpp_ctx, &ctx->vpp_pipeline_buf, 1);
 	CHECK_VASTATUS(va_status, "vaRenderPicture");
 
-	va_status = vaEndPicture(ctx->va_dpy, ctx->vpp.ctx);
+	va_status = vaEndPicture(ctx->va_dpy, ctx->vpp_ctx);
 	CHECK_VASTATUS(va_status, "vaEndPicture");
 
 	return va_status;
@@ -57,22 +56,20 @@ VAStatus csc_convert_rgbdata_to_yuv(struct csc_ctx_s *ctx, unsigned char *data, 
 
 int csc_alloc(struct csc_ctx_s *ctx,
 	VADisplay va_dpy, VAConfigID cfg, VAContextID ctxid,
-	int width, int height, int stride)
+	int width, int height)
 {
 	VAStatus status;
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->va_dpy = va_dpy;
-	ctx->vpp.cfg = cfg;
-	ctx->vpp.ctx = ctxid;
+	ctx->vpp_ctx = ctxid;
 	ctx->width = width;
 	ctx->height = height;
-	ctx->stride = stride;
 
-	status = vaCreateBuffer(ctx->va_dpy, ctx->vpp.ctx,
+	status = vaCreateBuffer(ctx->va_dpy, ctx->vpp_ctx,
 				VAProcPipelineParameterBufferType,
 				sizeof(VAProcPipelineParameterBuffer),
-				1, NULL, &ctx->vpp.pipeline_buf);
+				1, NULL, &ctx->vpp_pipeline_buf);
 	if (status != VA_STATUS_SUCCESS) {
 		printf("failed to create VPP pipeline buffer\n");
 		return -1;
@@ -95,7 +92,7 @@ int csc_free(struct csc_ctx_s *ctx)
 	if (ctx->rgb32_surface)
 		vaDestroySurfaces(ctx->va_dpy, &ctx->rgb32_surface, 1);
 
-	vaDestroyBuffer(ctx->va_dpy, ctx->vpp.pipeline_buf);
+	vaDestroyBuffer(ctx->va_dpy, ctx->vpp_pipeline_buf);
 
 	memset(ctx, 0, sizeof(*ctx));
 
