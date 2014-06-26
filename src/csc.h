@@ -6,8 +6,6 @@
 
 struct csc_ctx_s
 {
-	int width, height;
-
 	VADisplay   va_dpy;
 	VASurfaceID rgb32_surface;
 	VAContextID vpp_ctx;

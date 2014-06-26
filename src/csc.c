@@ -63,8 +63,6 @@ int csc_alloc(struct csc_ctx_s *ctx,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->va_dpy = va_dpy;
 	ctx->vpp_ctx = ctxid;
-	ctx->width = width;
-	ctx->height = height;
 
 	status = vaCreateBuffer(ctx->va_dpy, ctx->vpp_ctx,
 				VAProcPipelineParameterBufferType,
@@ -82,7 +80,7 @@ int csc_alloc(struct csc_ctx_s *ctx,
         va_attribs[0].value.value.i = VA_FOURCC_BGRX;
 
         status = vaCreateSurfaces(ctx->va_dpy, VA_RT_FORMAT_RGB32,
-		ctx->width, ctx->height, &ctx->rgb32_surface, 1, &va_attribs[0], 1);
+		width, height, &ctx->rgb32_surface, 1, &va_attribs[0], 1);
 
 	return 0;
 }
