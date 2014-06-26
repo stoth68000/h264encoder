@@ -28,14 +28,14 @@ static unsigned int measureElapsedMS(struct timeval *then)
  */
 static void ipcvideo_process_image(const void *p, ssize_t size)
 {
-	if (encoder_params->input_fourcc == E_FOURCC_YUY2) {
+	if (IS_YUY2(encoder_params)) {
 		ssize_t src_frame_size = ((ipc_dimensions.width * 2) * ipc_dimensions.height); /* YUY2 */
 		if (size != src_frame_size) {
 			printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
 			return;
 		}
 	} else
-	if (encoder_params->input_fourcc == E_FOURCC_BGRX) {
+	if (IS_BGRX(encoder_params)) {
 		ssize_t src_frame_size = ((ipc_dimensions.width * 4) * ipc_dimensions.height); /* YUY2 */
 		if (size != src_frame_size) {
 			printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);

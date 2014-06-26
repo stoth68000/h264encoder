@@ -50,9 +50,6 @@
 
 extern char *encoder_nalOutputFilename;
 
-#define IS_YUY2(p) ((p)->input_fourcc == E_FOURCC_YUY2)
-#define IS_BGRX(p) ((p)->input_fourcc == E_FOURCC_BGRX)
-
 #define VAEntrypointMax		10
 
 #define NAL_REF_IDC_NONE        0

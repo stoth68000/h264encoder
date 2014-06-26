@@ -5,6 +5,9 @@
 #include <va/va_drmcommon.h>
 #include <va/va_vpp.h>
 
+#define IS_YUY2(p) ((p)->input_fourcc == E_FOURCC_YUY2)
+#define IS_BGRX(p) ((p)->input_fourcc == E_FOURCC_BGRX)
+
 #define CHECK_VASTATUS(va_status,func)                                  \
     if (va_status != VA_STATUS_SUCCESS) {                               \
         fprintf(stderr,"%s:%s (%d) failed, exit %d\n", __func__, func, __LINE__, va_status); \
