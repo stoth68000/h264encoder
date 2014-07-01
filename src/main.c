@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -42,6 +44,7 @@ static void usage(int argc, char **argv)
 		"\n"
 		"Options:\n"
 	        "-h, --help                    Print this message\n"
+	        "-V, --version                 Display version\n"
 	        "-v, --verbose                 Log debugging messages\n"
 	        "-q, --quiet                   Don't display progress indicator\n"
 		"-b, --bitrate <number>        Encoding bitrate [def: %d]\n"
@@ -83,11 +86,12 @@ static void usage(int argc, char **argv)
 	       );
 }
 
-static const char short_options[] = "vqb:d:i:o:O:p:hmruD:Pf:n:W:H:M:I:Z:D:";
+static const char short_options[] = "vqVb:d:i:o:O:p:hmruD:Pf:n:W:H:M:I:Z:D:";
 
 static const struct option long_options[] = {
 	{ "verbose", no_argument, NULL, 'v' },
 	{ "quiet", no_argument, NULL, 'q' },
+	{ "version", no_argument, NULL, 'V' },
 	{ "bitrate", required_argument, NULL, 'b' },
 	{ "device", required_argument, NULL, 'd' },
 	{ "ipaddress", required_argument, NULL, 'i' },
@@ -155,6 +159,10 @@ int main(int argc, char **argv)
 			break;
 		case 'q':
 			quiet_encode = 1;
+			break;
+		case 'V':
+			fprintf(stderr, "%s\n", PACKAGE_STRING);
+			exit(0);
 			break;
 		case 'b':
 			encoder_params.frame_bitrate = atoi(optarg);
