@@ -53,7 +53,7 @@ AC_CACHE_SAVE
 
 AX_PTHREAD
 PKG_CHECK_MODULES([LIBVA], [libva libva-x11 libva-drm])
-PKG_CHECK_MODULES([LIBAV], [libavutil libavcodec])
+PKG_CHECK_MODULES([LIBAV], [libavutil libavcodec libavformat])
 PKG_CHECK_MODULES([LIBES2TS], [libes2ts])
 PKG_CHECK_MODULES([LIBIPCVIDEO], [libipcvideo])
 PKG_CHECK_MODULES([X11], [x11])
