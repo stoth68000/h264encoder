@@ -2209,6 +2209,15 @@ int encoder_init(struct encoder_params_s *params)
 	assert(params);
 	printf("%s(%d, %d)\n", __func__, params->width, params->height);
 
+	if (params->width % 32) {
+		printf("Width(%d) must be an exact multiple of 32 pixels\n", params->width);
+		return -1;
+	}
+	if (params->height % 16) {
+		printf("Height(%d) must be an exact multiple of 16 pixels\n", params->height);
+		return -1;
+	}
+
 	switch (params->input_fourcc) {
 	case E_FOURCC_YUY2:
 	case E_FOURCC_BGRX:
