@@ -133,6 +133,7 @@ int main(int argc, char **argv)
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
 	int syncstall = 0;
+	int width = 720, height = 480;
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
 		PAYLOAD_RTP_ES

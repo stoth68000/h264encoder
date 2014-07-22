@@ -16,8 +16,6 @@ typedef enum {
 extern io_method io;
 extern char *v4l_dev_name;
 
-extern unsigned int width;
-extern unsigned int height; 
 extern unsigned int g_V4LNumerator;
 extern unsigned int g_V4LFrameRate;
 extern char *encoder_nalOutputFilename;

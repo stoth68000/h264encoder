@@ -38,8 +38,8 @@ io_method io = IO_METHOD_MMAP;
 char *v4l_dev_name = NULL;
 char *encoder_nalOutputFilename = NULL;
 
-unsigned int width = 720;
-unsigned int height = 480;
+static unsigned int width = 720;
+static unsigned int height = 480;
 unsigned int g_V4LNumerator = 0;
 unsigned int g_V4LFrameRate = 0;
 static unsigned int g_inputnr = 0;
