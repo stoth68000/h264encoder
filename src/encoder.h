@@ -38,6 +38,10 @@ struct encoder_params_s
 
 	unsigned int frame_bitrate;
 	enum fourcc_e input_fourcc;
+
+	/* V4L */
+	int capture_inputnr;
+//	unsigned int syncstall;
 };
 
 extern FILE *csv_fp;

@@ -131,7 +131,6 @@ int main(int argc, char **argv)
 	struct encoder_params_s encoder_params;
 	char *ipaddress = "192.168.0.67";
 	int ipport = 0, dscp = 0, pktsize = 0;
-	int videoinputnr = 0;
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
 	int syncstall = 0;
@@ -177,7 +176,7 @@ int main(int argc, char **argv)
 			ipaddress = optarg;
 			break;
 		case 'I':
-			videoinputnr = atoi(optarg);
+			encoder_params.capture_inputnr = atoi(optarg);
 			break;
 		case 'm':
 			io = IO_METHOD_MMAP;
@@ -298,7 +297,7 @@ int main(int argc, char **argv)
 			encoder_params.deinterlacemode = req_deint_mode;
 
 		printf("V4L Capture: %dx%d %d/%d [input: %d] [syncstall: %s]\n", width, height,
-			g_V4LNumerator, g_V4LFrameRate, videoinputnr,
+			g_V4LNumerator, g_V4LFrameRate, encoder_params.capture_inputnr,
 			syncstall ? "true" : "false");
 	}
 
@@ -320,7 +319,7 @@ int main(int argc, char **argv)
 
 	if (capturemode == CM_V4L) {
 		open_v4l_device();
-		init_v4l_device(&encoder_params, videoinputnr, syncstall);
+		init_v4l_device(&encoder_params, syncstall);
 		if (g_V4LFrameRate == 0)
 			g_V4LFrameRate = 60;
 	}

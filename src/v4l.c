@@ -440,7 +440,7 @@ static void init_userp(unsigned int buffer_size)
 	}
 }
 
-int init_v4l_device(struct encoder_params_s *p, int inputnr, int syncstall)
+int init_v4l_device(struct encoder_params_s *p, int syncstall)
 {
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
@@ -468,11 +468,11 @@ int init_v4l_device(struct encoder_params_s *p, int inputnr, int syncstall)
 		exit(EXIT_FAILURE);
 	}
 
-	if (-1 == xioctl(fd, VIDIOC_S_INPUT, &inputnr)) {
+	if (-1 == xioctl(fd, VIDIOC_S_INPUT, &p->capture_inputnr)) {
 		printf(" set input failed\n");
 		exit(EXIT_FAILURE);
 	}
-	g_inputnr = inputnr;
+	g_inputnr = p->capture_inputnr;
 
 	switch (io) {
 	case IO_METHOD_READ:
