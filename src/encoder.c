@@ -2209,7 +2209,7 @@ int encoder_init(struct encoder_params_s *params)
 	assert(params);
 	printf("%s(%d, %d)\n", __func__, params->width, params->height);
 
-	if (params->width % 32) {
+	if ((params->width != 720) && (params->width % 32)) {
 		printf("Width(%d) must be an exact multiple of 32 pixels\n", params->width);
 		return -1;
 	}
