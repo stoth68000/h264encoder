@@ -1,6 +1,7 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
+#include <stdio.h>
 #include <va/va.h>
 #include <va/va_drmcommon.h>
 #include <va/va_vpp.h>
@@ -38,10 +39,6 @@ struct encoder_params_s
 
 	unsigned int frame_bitrate;
 	enum fourcc_e input_fourcc;
-
-	/* V4L */
-	int capture_inputnr;
-//	unsigned int syncstall;
 };
 
 extern FILE *csv_fp;

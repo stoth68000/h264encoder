@@ -23,6 +23,7 @@
 #include "v4l.h"
 #include "encoder.h"
 #include "main.h"
+#include "capture.h"
 
 #include <linux/videodev2.h>
 
@@ -198,7 +199,7 @@ static int read_frame(void)
 	return 1;
 }
 
-void v4l_mainloop(void)
+static void v4l_mainloop(void)
 {
 	while (!time_to_quit) {
 		for (;;) {
@@ -235,7 +236,7 @@ void v4l_mainloop(void)
 	}
 }
 
-void stop_v4l_capturing(void)
+static void v4l_stop_capturing(void)
 {
 	enum v4l2_buf_type type;
 
@@ -255,7 +256,7 @@ void stop_v4l_capturing(void)
 	}
 }
 
-void start_v4l_capturing(void)
+static void v4l_start_capturing(void)
 {
 	unsigned int i;
 	enum v4l2_buf_type type;
@@ -311,7 +312,7 @@ void start_v4l_capturing(void)
 	}
 }
 
-void uninit_v4l_device(void)
+static void v4l_uninit_device(void)
 {
 	unsigned int i;
 
@@ -440,7 +441,7 @@ static void init_userp(unsigned int buffer_size)
 	}
 }
 
-int init_v4l_device(struct encoder_params_s *p, int syncstall)
+static int v4l_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
@@ -451,8 +452,10 @@ int init_v4l_device(struct encoder_params_s *p, int syncstall)
 
 	encoder_params = p;
 	encoder_params->input_fourcc = E_FOURCC_YUY2;
+	c->width = 720;
+	c->height = 480;
 
-	g_syncStall = syncstall;
+	g_syncStall = c->v4l.syncstall;
 
 	if (-1 == xioctl(fd, VIDIOC_QUERYCAP, &cap)) {
 		if (EINVAL == errno) {
@@ -468,11 +471,11 @@ int init_v4l_device(struct encoder_params_s *p, int syncstall)
 		exit(EXIT_FAILURE);
 	}
 
-	if (-1 == xioctl(fd, VIDIOC_S_INPUT, &p->capture_inputnr)) {
+	if (-1 == xioctl(fd, VIDIOC_S_INPUT, &c->v4l.inputnr)) {
 		printf(" set input failed\n");
 		exit(EXIT_FAILURE);
 	}
-	g_inputnr = p->capture_inputnr;
+	g_inputnr = c->v4l.inputnr;
 
 	switch (io) {
 	case IO_METHOD_READ:
@@ -664,7 +667,7 @@ int init_v4l_device(struct encoder_params_s *p, int syncstall)
 	return 0;
 }
 
-void close_v4l_device(void)
+static void v4l_close_device(void)
 {
 	if (-1 == close(fd))
 		errno_exit("close");
@@ -672,7 +675,7 @@ void close_v4l_device(void)
 	fd = -1;
 }
 
-void open_v4l_device(void)
+static int v4l_open_device(void)
 {
 	struct stat st;
 
@@ -692,5 +695,29 @@ void open_v4l_device(void)
 		printf("Cannot open v4l_dev_name\n");
 		exit(EXIT_FAILURE);
 	}
+
+	return 0;
 }
+
+static void v4l_set_defaults(struct capture_parameters_s *c)
+{
+	c->type = CM_V4L;
+	c->v4l.inputnr = 0;
+	c->v4l.syncstall = 0;
+}
+
+struct capture_operations_s v4l_ops = 
+{
+	.type		= CM_V4L,
+	.name		= "V4L Device",
+	.set_defaults	= v4l_set_defaults,
+	.mainloop	= v4l_mainloop,
+	.stop		= v4l_stop_capturing,
+	.start		= v4l_start_capturing,
+	.uninit		= v4l_uninit_device,
+	.init		= v4l_init_device,
+	.close		= v4l_close_device,
+	.open		= v4l_open_device,
+	.default_fps	= 60,
+};
 

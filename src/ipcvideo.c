@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include <libipcvideo/ipcvideo.h>
 #include "encoder.h"
+#include "capture.h"
 #include "main.h"
 
 static int ipcFPS = 30;
@@ -132,11 +133,11 @@ void ipcvideo_uninit_device(void)
 	}
 }
 
-int ipcvideo_init_device(struct encoder_params_s *p, int *width, int *height, int fps)
+int ipcvideo_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
-	*width = ipc_dimensions.width;
-	*height = ipc_dimensions.height;
-	ipcFPS = fps;
+	c->width = ipc_dimensions.width;
+	c->height = ipc_dimensions.height;
+	ipcFPS = c->fps;
 	encoder_params = p;
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
@@ -190,4 +191,24 @@ int ipcvideo_open_device()
 
 	return 0;
 }
+
+static void ipcvideo_set_defaults(struct capture_parameters_s *c)
+{
+	c->type = CM_IPCVIDEO;
+}
+
+struct capture_operations_s ipcvideo_ops =
+{
+	.type		= CM_IPCVIDEO,
+	.name		= "IPCVideo pipeline",
+	.set_defaults	= ipcvideo_set_defaults,
+	.mainloop	= ipcvideo_mainloop,
+	.stop		= ipcvideo_stop_capturing,
+	.start		= ipcvideo_start_capturing,
+	.uninit		= ipcvideo_uninit_device,
+	.init		= ipcvideo_init_device,
+	.close		= ipcvideo_close_device,
+	.open		= ipcvideo_open_device,
+	.default_fps	= 30,
+};
 

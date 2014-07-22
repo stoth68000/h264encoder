@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include "encoder.h"
+#include "capture.h"
 #include "main.h"
 
 static int ipcFPS = 30;
@@ -42,7 +43,7 @@ static void fixed_process_image(const void *p, ssize_t size)
 		time_to_quit = 1;
 }
 
-void fixed_4k_mainloop(void)
+static void fixed_4k_mainloop(void)
 {
 	/* This doesn't guarantee 60fps but its reasonably close for
 	 * non-realtime environments with low cpu load.
@@ -69,31 +70,31 @@ void fixed_4k_mainloop(void)
 	}
 }
 
-void fixed_4k_stop_capturing(void)
+static void fixed_4k_stop_capturing(void)
 {
 }
 
-void fixed_4k_start_capturing(void)
+static void fixed_4k_start_capturing(void)
 {
 }
 
-void fixed_4k_uninit_device(void)
+static void fixed_4k_uninit_device(void)
 {
 	free(frame);
 }
 
-int fixed_4k_init_device(struct encoder_params_s *p, unsigned int *width, unsigned int *height, int fps)
+static int fixed_4k_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
-	*width = fixedWidth;
-	*height = fixedHeight;
-	ipcFPS = fps;
+	c->width = fixedWidth;
+	c->height = fixedHeight;
+	ipcFPS = c->fps;
 	encoder_params = p;
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
 	/* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
 	ipcResubmitTimeoutMS = (1000 / ipcFPS) + 3;
 	printf("%s(%d, %d, %d timeout=%d)\n", __func__,
-		*width, *height,
+		c->width, c->height,
 		ipcFPS, ipcResubmitTimeoutMS);
 
 	frame = malloc(fixedLength);
@@ -103,11 +104,11 @@ int fixed_4k_init_device(struct encoder_params_s *p, unsigned int *width, unsign
 	return 0;
 }
 
-void fixed_4k_close_device(void)
+static void fixed_4k_close_device(void)
 {
 }
 
-int fixed_4k_open_device()
+static int fixed_4k_open_device()
 {
 	fixedWidth = 3840;
 	fixedHeight = 2160;
@@ -115,3 +116,24 @@ int fixed_4k_open_device()
 
 	return 0;
 }
+
+static void fixed_4k_set_defaults(struct capture_parameters_s *c)
+{
+	c->type = CM_FIXED_4K;
+}
+
+struct capture_operations_s fixed_4k_ops =
+{
+	.type		= CM_FIXED_4K,
+	.name		= "Fixed Video Image (4K Resolution)",
+	.set_defaults	= fixed_4k_set_defaults,
+	.mainloop	= fixed_4k_mainloop,
+	.stop		= fixed_4k_stop_capturing,
+	.start		= fixed_4k_start_capturing,
+	.uninit		= fixed_4k_uninit_device,
+	.init		= fixed_4k_init_device,
+	.close		= fixed_4k_close_device,
+	.open		= fixed_4k_open_device,
+	.default_fps	= 30,
+};
+

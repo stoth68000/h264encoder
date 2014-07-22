@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include "encoder.h"
+#include "capture.h"
 #include "fixed-frame.h"
 #include "main.h"
 
@@ -40,7 +41,7 @@ static void fixed_process_image(const void *p, ssize_t size)
 		time_to_quit = 1;
 }
 
-void fixed_mainloop(void)
+static void fixed_mainloop(void)
 {
 	/* This doesn't guarantee 60fps but its reasonably close for
 	 * non-realtime environments with low cpu load.
@@ -74,30 +75,30 @@ void fixed_mainloop(void)
 	}
 }
 
-void fixed_stop_capturing(void)
+static void fixed_stop_capturing(void)
 {
 }
 
-void fixed_start_capturing(void)
+static void fixed_start_capturing(void)
 {
 }
 
-void fixed_uninit_device(void)
+static void fixed_uninit_device(void)
 {
 }
 
-int fixed_init_device(struct encoder_params_s *p, unsigned int *width, unsigned int *height, int fps)
+static int fixed_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
-	*width = fixedWidth;
-	*height = fixedHeight;
-	ipcFPS = fps;
+	c->width = fixedWidth;
+	c->height = fixedHeight;
+	ipcFPS = c->fps;
 	encoder_params = p;
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
 	/* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
 	ipcResubmitTimeoutMS = (1000 / ipcFPS) + 3;
 	printf("%s(%d, %d, %d timeout=%d)\n", __func__,
-		*width, *height,
+		c->width, c->height,
 		ipcFPS, ipcResubmitTimeoutMS);
 
 	encoder_params->input_fourcc = E_FOURCC_YUY2;
@@ -105,11 +106,11 @@ int fixed_init_device(struct encoder_params_s *p, unsigned int *width, unsigned 
 	return 0;
 }
 
-void fixed_close_device(void)
+static void fixed_close_device(void)
 {
 }
 
-int fixed_open_device()
+static int fixed_open_device()
 {
 	fixedWidth = fixedframeWidth;
 	fixedHeight = fixedframeHeight;
@@ -120,3 +121,24 @@ int fixed_open_device()
 
 	return 0;
 }
+
+static void fixed_set_defaults(struct capture_parameters_s *c)
+{
+	c->type = CM_FIXED;
+}
+
+struct capture_operations_s fixed_ops =
+{
+	.type		= CM_FIXED,
+	.name		= "Fixed Video Image (SD)",
+	.set_defaults	= fixed_set_defaults,
+	.mainloop	= fixed_mainloop,
+	.stop		= fixed_stop_capturing,
+	.start		= fixed_start_capturing,
+	.uninit		= fixed_uninit_device,
+	.init		= fixed_init_device,
+	.close		= fixed_close_device,
+	.open		= fixed_open_device,
+	.default_fps	= 30,
+};
+

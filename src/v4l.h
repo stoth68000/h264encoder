@@ -1,4 +1,11 @@
-#include "encoder.h"
+
+#ifndef V4L_H
+#define V4L_H
+
+struct capture_v4l_params_s {
+	int inputnr;
+	unsigned int syncstall;
+};
 
 typedef enum {
         IO_METHOD_READ,
@@ -15,11 +22,6 @@ extern unsigned int g_V4LNumerator;
 extern unsigned int g_V4LFrameRate;
 extern char *encoder_nalOutputFilename;
 
-void v4l_mainloop(void);
-void stop_v4l_capturing(void);
-void start_v4l_capturing(void);
-void uninit_v4l_device(void);
-int init_v4l_device(struct encoder_params_s *params, int syncstall);
-void close_v4l_device(void);
-void open_v4l_device(void);
+extern struct capture_operations_s v4l_ops;
 
+#endif // V4L_H

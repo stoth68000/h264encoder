@@ -20,6 +20,8 @@ h264encoder_LDADD = \
 h264encoder_SOURCES = \
 	encoder.c \
 	encoder.h \
+	capture.c \
+	capture.h \
 	encoder-display.c \
 	encoder-display.h \
 	es2ts.c \

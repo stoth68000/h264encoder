@@ -9,21 +9,11 @@
 
 #include <libes2ts/es2ts.h>
 
+#include "capture.h"
 #include "rtp.h"
-#include "v4l.h"
-#include "ipcvideo.h"
-#include "fixed.h"
-#include "fixed-4k.h"
 #include "encoder.h"
 #include "es2ts.h"
 #include "main.h"
-
-/* main.c */
-#define CM_V4L		0
-#define CM_IPCVIDEO	1
-#define CM_FIXED	2
-#define CM_FIXED_4K	3
-#define CM_MAX		CM_FIXED_4K
 
 unsigned int capturemode = CM_V4L;
 int time_to_quit = 0;
@@ -129,6 +119,9 @@ static const struct option long_options[] = {
 int main(int argc, char **argv)
 {
 	struct encoder_params_s encoder_params;
+	struct capture_parameters_s capture_params;
+	struct capture_operations_s *source = 0;
+
 	char *ipaddress = "192.168.0.67";
 	int ipport = 0, dscp = 0, pktsize = 0;
 	v4l_dev_name = (char *)"/dev/video0";
@@ -140,6 +133,7 @@ int main(int argc, char **argv)
 	} payloadMode = PAYLOAD_RTP_TS;
 
 	encoder_param_defaults(&encoder_params);
+	memset(&capture_params, 0, sizeof(capture_params));
 
 	for (;;) {
 		int index;
@@ -176,7 +170,7 @@ int main(int argc, char **argv)
 			ipaddress = optarg;
 			break;
 		case 'I':
-			encoder_params.capture_inputnr = atoi(optarg);
+			capture_params.v4l.inputnr = atoi(optarg);
 			break;
 		case 'm':
 			io = IO_METHOD_MMAP;
@@ -280,81 +274,64 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
-
 	printf("RTP Payload: ");
 	if (payloadMode == 0)
 		printf("TS\n");
 	else
 		printf("ES\n");
 
-	if ((capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K))
+	source = getCaptureSource(capturemode);
+	if (!source) {
+		printf("Invalid capture mode, no capture interface defined\n");
+		exit(1);
+	}
+	source->set_defaults(&capture_params);
+
+	/* */
+	if (g_V4LFrameRate == 0)
+		g_V4LFrameRate = source->default_fps;
+
+	/* Configure the encoder to match the capture source */
+	if ((source->type == CM_FIXED) || (source->type == CM_FIXED_4K))
 		encoder_params.enable_osd = 1;
 
-	if (capturemode == CM_V4L) {
+	if (source->type == CM_V4L) {
 		if (req_deint_mode == -1 /* UNSET */)
 			encoder_params.deinterlacemode = 2;
 		else
 			encoder_params.deinterlacemode = req_deint_mode;
-
-		printf("V4L Capture: %dx%d %d/%d [input: %d] [syncstall: %s]\n", width, height,
-			g_V4LNumerator, g_V4LFrameRate, encoder_params.capture_inputnr,
-			syncstall ? "true" : "false");
+		capture_params.v4l.syncstall = syncstall;
 	}
-
-	if (capturemode == CM_IPCVIDEO)
-		printf("IPC Video Capture: %dx%d %d/%d\n", width, height, g_V4LNumerator, g_V4LFrameRate);
-
-	if (capturemode == CM_FIXED)
-		printf("Fixed Frame Capture: %d/%d [osd: %s]\n", g_V4LNumerator, g_V4LFrameRate,
-			encoder_params.enable_osd ? "Enabled" : "Disabled");
-
-	if (capturemode == CM_FIXED_4K)
-		printf("Fixed Frame (4k) Capture: %d/%d [osd: %s]\n", g_V4LNumerator, g_V4LFrameRate,
-			encoder_params.enable_osd ? "Enabled" : "Disabled");
 
 	if (signal(SIGINT, signalHandler) == SIG_ERR) {
 		printf("signal() failed\n");
 		time_to_quit = 1;
 	}
 
-	if (capturemode == CM_V4L) {
-		open_v4l_device();
-		init_v4l_device(&encoder_params, syncstall);
-		if (g_V4LFrameRate == 0)
-			g_V4LFrameRate = 60;
-	}
-	if (capturemode == CM_IPCVIDEO) {
-		if (ipcvideo_open_device() < 0) {
-			printf("Error: IPCVIDEO pipeline producer is not running\n");
-			goto encoder_failed;
-		}
-		if (g_V4LFrameRate == 0)
-			g_V4LFrameRate = 30;
-
-		/* Init the ipc video pipe and extract resolution details */
-		ipcvideo_init_device(&encoder_params, &width, &height, g_V4LFrameRate);
-	}
-	if (capturemode == CM_FIXED) {
-		fixed_open_device();
-		if (g_V4LFrameRate == 0)
-			g_V4LFrameRate = 30;
-		fixed_init_device(&encoder_params, &width, &height, g_V4LFrameRate);
-	}
-	if (capturemode == CM_FIXED_4K) {
-		fixed_4k_open_device();
-		if (g_V4LFrameRate == 0)
-			g_V4LFrameRate = 30;
-		fixed_4k_init_device(&encoder_params, &width, &height, g_V4LFrameRate);
+	if (source->open() < 0) {
+		printf("Error: %s capture did not start\n", source->name);
+		goto encoder_failed;
 	}
 
-	printf("Using frame resolution: %dx%d\n", width, height);
+	/* Init the capture source */
+	capture_params.fps = g_V4LFrameRate;
+	capture_params.width = width;
+	capture_params.height = height;
+	source->init(&encoder_params, &capture_params);
 
-	encoder_params.height = height;
-	encoder_params.width = width;
+	/* Initialize the encoder */
+	encoder_params.height = capture_params.height;
+	encoder_params.width = capture_params.width;
 	if (encoder_init(&encoder_params)) {
 		printf("Error: Encoder init failed\n");
 		goto encoder_failed;
 	}
+
+	printf("%s Capture: %dx%d %d/%d [osd: %s]\n",
+		source->name,
+		width, height,
+		g_V4LNumerator, g_V4LFrameRate,
+		encoder_params.enable_osd ? "Enabled" : "Disabled");
 
 #if 0
 	/* Open the 'nals via rtp' mechanism if requested, but only for the internal GL demo app */
@@ -367,12 +344,11 @@ int main(int argc, char **argv)
 #endif
 
 	/* TODO: Convert the RTP output mechanisms into a single interface and instantiate a common API.  */
-	/* TODO: Convert the Input modules into a single interface and instantiate a common capture API. */
 
 	/* RPT/ES , routed out via RTP */
 	if ((payloadMode == PAYLOAD_RTP_ES) &&
-		((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) ||
-		(capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
+		((source->type == CM_V4L) || (source->type == CM_IPCVIDEO) ||
+		(source->type == CM_FIXED) || (source->type == CM_FIXED_4K)) &&
 		ipport && (initRTPHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0))
 	{
 		printf("Error: RTP init failed\n");
@@ -381,37 +357,18 @@ int main(int argc, char **argv)
 
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
 	if ((payloadMode == PAYLOAD_RTP_TS) &&
-		((capturemode == CM_V4L) || (capturemode == CM_IPCVIDEO) ||
-		(capturemode == CM_FIXED) || (capturemode == CM_FIXED_4K)) &&
+		((source->type == CM_V4L) || (source->type == CM_IPCVIDEO) ||
+		(source->type == CM_FIXED) || (source->type == CM_FIXED_4K)) &&
 		ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, g_V4LFrameRate) < 0))
 	{
 		printf("Error: ES2TS init failed\n");
 		goto rtp_failed;
 	}
 
-	if (capturemode == CM_V4L) {
-		start_v4l_capturing();
-		v4l_mainloop();
-		stop_v4l_capturing();
-	}
-
-	if (capturemode == CM_IPCVIDEO) {
-		ipcvideo_start_capturing();
-		ipcvideo_mainloop();
-		ipcvideo_stop_capturing();
-	}
-
-	if (capturemode == CM_FIXED) {
-		fixed_start_capturing();
-		fixed_mainloop();
-		fixed_stop_capturing();
-	}
-
-	if (capturemode == CM_FIXED_4K) {
-		fixed_4k_start_capturing();
-		fixed_4k_mainloop();
-		fixed_4k_stop_capturing();
-	}
+	/* Start, capture content and stop the device, the main processing */
+	source->start();
+	source->mainloop();
+	source->stop();
 
 	encoder_close(&encoder_params);
 
@@ -422,22 +379,8 @@ rtp_failed:
 		freeRTPHandler();
 
 encoder_failed:
-	if (capturemode == CM_V4L) {
-		uninit_v4l_device();
-		close_v4l_device();
-	}
-	if (capturemode == CM_IPCVIDEO) {
-		ipcvideo_uninit_device();
-		ipcvideo_close_device();
-	}
-	if (capturemode == CM_FIXED) {
-		fixed_uninit_device();
-		fixed_close_device();
-	}
-	if (capturemode == CM_FIXED_4K) {
-		fixed_4k_uninit_device();
-		fixed_4k_close_device();
-	}
+	source->uninit();
+	source->close();
 
 	return 0;
 }
