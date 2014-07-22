@@ -23,6 +23,11 @@ enum fourcc_e {
 
 struct encoder_params_s
 {
+	enum {
+		EM_VAAPI = 0,
+		EM_MAX
+        } type;
+
 	unsigned int width;
 	unsigned int height;
 	unsigned int enable_osd;
@@ -44,13 +49,24 @@ struct encoder_params_s
 extern FILE *csv_fp;
 extern int quiet_encode;
 
-int  encoder_init(struct encoder_params_s *params);
-void encoder_param_defaults(struct encoder_params_s *p);
-void encoder_close(struct encoder_params_s *params);
-int  encoder_encode_frame(struct encoder_params_s *params, unsigned char *inbuf);
 int  encoder_string_to_rc(char *str);
 char *encoder_rc_to_string(int rcmode);
 int  encoder_string_to_profile(char *str);
 char *encoder_profile_to_string(int profile);
+
+struct encoder_operations_s
+{
+        unsigned int type;
+        char *name;
+
+	int  (*init)(struct encoder_params_s *);
+	void (*set_defaults)(struct encoder_params_s *);
+	void (*close)(struct encoder_params_s *);
+	int  (*encode_frame)(struct encoder_params_s *, unsigned char *);
+};
+
+extern struct encoder_operations_s vaapi_ops;
+
+struct encoder_operations_s *getEncoderTarget(unsigned int type);
 
 #endif

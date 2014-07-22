@@ -9,6 +9,7 @@
 static int ipcFPS = 30;
 static int ipcResubmitTimeoutMS = 0;
 
+static struct encoder_operations_s *encoder = 0;
 static struct ipcvideo_s *ctx = 0;
 static struct ipcvideo_dimensions_s ipc_dimensions;
 static struct encoder_params_s *encoder_params = 0;
@@ -44,7 +45,7 @@ static void ipcvideo_process_image(const void *p, ssize_t size)
 		}
 	}
 
-	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
+	if (!encoder->encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -116,15 +117,20 @@ void ipcvideo_mainloop(void)
 	}
 }
 
-void ipcvideo_stop_capturing(void)
+static void ipcvideo_stop_capturing(void)
 {
 }
 
-void ipcvideo_start_capturing(void)
+static int ipcvideo_start_capturing(struct encoder_operations_s *e)
 {
+	if (!e)
+		return -1;
+
+	encoder = e;
+	return 0;
 }
 
-void ipcvideo_uninit_device(void)
+static void ipcvideo_uninit_device(void)
 {
 	int ret = ipcvideo_context_destroy(ctx);
 	if (KLAPI_FAILED(ret)) {
@@ -133,7 +139,7 @@ void ipcvideo_uninit_device(void)
 	}
 }
 
-int ipcvideo_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
+static int ipcvideo_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
 	c->width = ipc_dimensions.width;
 	c->height = ipc_dimensions.height;
@@ -152,7 +158,7 @@ int ipcvideo_init_device(struct encoder_params_s *p, struct capture_parameters_s
 	return 0;
 }
 
-void ipcvideo_close_device(void)
+static void ipcvideo_close_device(void)
 {
 	int ret = ipcvideo_context_detach(ctx);
 	if (KLAPI_FAILED(ret)) {
@@ -163,7 +169,7 @@ void ipcvideo_close_device(void)
 	ipcvideo_dump_context(ctx);
 }
 
-int ipcvideo_open_device()
+static int ipcvideo_open_device()
 {
 	int ret = ipcvideo_context_create(&ctx);
 	if (KLAPI_FAILED(ret)) {

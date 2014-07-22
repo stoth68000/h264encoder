@@ -5,6 +5,8 @@
 struct capture_v4l_params_s {
 	int inputnr;
 	unsigned int syncstall;
+	unsigned int V4LNumerator;
+	unsigned int V4LFrameRate;
 };
 
 typedef enum {
@@ -16,8 +18,6 @@ typedef enum {
 extern io_method io;
 extern char *v4l_dev_name;
 
-extern unsigned int g_V4LNumerator;
-extern unsigned int g_V4LFrameRate;
 extern char *encoder_nalOutputFilename;
 
 extern struct capture_operations_s v4l_ops;

@@ -30,11 +30,11 @@ static void signalTermHandler(int a_Signal)
 	signal(SIGTERM, SIG_DFL);
 }
 
-static void usage(int argc, char **argv)
+static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 {
 	struct encoder_params_s p;
 
-	encoder_param_defaults(&p);
+	encoder->set_defaults(&p);
 
 	printf("Usage:\n"
 		"\n"
@@ -127,6 +127,7 @@ int main(int argc, char **argv)
 	struct encoder_params_s encoder_params;
 	struct capture_parameters_s capture_params;
 	struct capture_operations_s *source = 0;
+	struct encoder_operations_s *encoder = 0;
 
 	char *ipaddress = "192.168.0.67";
 	int ipport = 0, dscp = 0, pktsize = 0;
@@ -134,12 +135,22 @@ int main(int argc, char **argv)
 	int req_deint_mode = -1;
 	int syncstall = 0;
 	int width = 720, height = 480;
+	int V4LFrameRate = 0;
+	int V4LNumerator = 0;
+
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
 		PAYLOAD_RTP_ES
 	} payloadMode = PAYLOAD_RTP_TS;
 
-	encoder_param_defaults(&encoder_params);
+	/* We currently support a single encoder type (VAAPI) */
+	encoder = getEncoderTarget(EM_VAAPI);
+	if (!encoder) {
+		printf("Invalid encoder target, no encoder selected\n");
+		exit(1);
+	}
+	encoder->set_defaults(&encoder_params);
+
 	memset(&capture_params, 0, sizeof(capture_params));
 
 	for (;;) {
@@ -171,7 +182,7 @@ int main(int argc, char **argv)
 			v4l_dev_name = optarg;
 			break;
 		case 'h':
-			usage(argc, argv);
+			usage(encoder, argc, argv);
 			exit(0);
 		case 'i':
 			ipaddress = optarg;
@@ -185,14 +196,14 @@ int main(int argc, char **argv)
 		case 'M':
 			capturemode = atoi(optarg);
 			if (capturemode > CM_MAX) {
-				usage(argc, argv);
+				usage(encoder, argc, argv);
 				exit(0);
 			}
 			break;
 		case 'D':
 			req_deint_mode = atoi(optarg);
 			if (req_deint_mode > 2) {
-				usage(argc, argv);
+				usage(encoder, argc, argv);
 				exit(0);
 			}
 			break;
@@ -218,7 +229,7 @@ int main(int argc, char **argv)
 		case 4:
 			encoder_params.rc_mode = encoder_string_to_rc(optarg);
 			if (encoder_params.rc_mode < 0) {
-				usage(argc, argv);
+				usage(encoder, argc, argv);
 				exit(1);
 			}
 			break;
@@ -228,7 +239,7 @@ int main(int argc, char **argv)
 		case 6:
 			encoder_params.h264_profile = encoder_string_to_profile(optarg);
 			if (encoder_params.h264_profile < 0) {
-				usage(argc, argv);
+				usage(encoder, argc, argv);
 				exit(1);
 			}
 			break;
@@ -245,12 +256,12 @@ int main(int argc, char **argv)
 			io = IO_METHOD_USERPTR;
 			break;
 		case 'f':
-			g_V4LFrameRate = atoi(optarg);
-			if (!g_V4LNumerator)
-				g_V4LNumerator = 1;
+			V4LFrameRate = atoi(optarg);
+			if (!V4LNumerator)
+				V4LNumerator = 1;
 			break;
 		case 'n':
-			g_V4LNumerator = atoi(optarg);
+			V4LNumerator = atoi(optarg);
 			break;
 		case 'p':
 			ipport = atoi(optarg);
@@ -277,7 +288,7 @@ int main(int argc, char **argv)
 			encoder_params.enable_osd = atoi(optarg);
 			break;
 		default:
-			usage(argc, argv);
+			usage(encoder, argc, argv);
 			exit(1);
 		}
 	}
@@ -295,8 +306,15 @@ int main(int argc, char **argv)
 	source->set_defaults(&capture_params);
 
 	/* */
-	if (g_V4LFrameRate == 0)
-		g_V4LFrameRate = source->default_fps;
+	if (V4LFrameRate == 0) {
+		capture_params.v4l.V4LFrameRate = source->default_fps;
+		capture_params.v4l.V4LNumerator = 1;
+	} else {
+		capture_params.v4l.V4LFrameRate = V4LFrameRate;
+		capture_params.v4l.V4LNumerator = V4LNumerator;
+	}
+	capture_params.fps = capture_params.v4l.V4LFrameRate;
+	V4LFrameRate = capture_params.fps;
 
 	/* Configure the encoder to match the capture source */
 	if ((source->type == CM_FIXED) || (source->type == CM_FIXED_4K))
@@ -325,7 +343,6 @@ int main(int argc, char **argv)
 	}
 
 	/* Init the capture source */
-	capture_params.fps = g_V4LFrameRate;
 	capture_params.width = width;
 	capture_params.height = height;
 	source->init(&encoder_params, &capture_params);
@@ -333,7 +350,7 @@ int main(int argc, char **argv)
 	/* Initialize the encoder */
 	encoder_params.height = capture_params.height;
 	encoder_params.width = capture_params.width;
-	if (encoder_init(&encoder_params)) {
+	if (encoder->init(&encoder_params)) {
 		printf("Error: Encoder init failed\n");
 		goto encoder_failed;
 	}
@@ -341,7 +358,7 @@ int main(int argc, char **argv)
 	printf("%s Capture: %dx%d %d/%d [osd: %s]\n",
 		source->name,
 		width, height,
-		g_V4LNumerator, g_V4LFrameRate,
+		V4LNumerator, V4LFrameRate,
 		encoder_params.enable_osd ? "Enabled" : "Disabled");
 
 #if 0
@@ -360,7 +377,7 @@ int main(int argc, char **argv)
 	if ((payloadMode == PAYLOAD_RTP_ES) &&
 		((source->type == CM_V4L) || (source->type == CM_IPCVIDEO) ||
 		(source->type == CM_FIXED) || (source->type == CM_FIXED_4K)) &&
-		ipport && (initRTPHandler(ipaddress, ipport, width, height, g_V4LFrameRate) < 0))
+		ipport && (initRTPHandler(ipaddress, ipport, width, height, V4LFrameRate) < 0))
 	{
 		printf("Error: RTP init failed\n");
 		goto rtp_failed;
@@ -370,18 +387,23 @@ int main(int argc, char **argv)
 	if ((payloadMode == PAYLOAD_RTP_TS) &&
 		((source->type == CM_V4L) || (source->type == CM_IPCVIDEO) ||
 		(source->type == CM_FIXED) || (source->type == CM_FIXED_4K)) &&
-		ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, g_V4LFrameRate) < 0))
+		ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, V4LFrameRate) < 0))
 	{
 		printf("Error: ES2TS init failed\n");
 		goto rtp_failed;
 	}
 
 	/* Start, capture content and stop the device, the main processing */
-	source->start();
+	if (source->start(encoder) < 0) {
+		printf("Source failed to start\n");
+		goto start_failed;
+	}
+
 	source->mainloop();
 	source->stop();
 
-	encoder_close(&encoder_params);
+start_failed:
+	encoder->close(&encoder_params);
 
 	freeESHandler();
 

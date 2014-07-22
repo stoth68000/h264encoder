@@ -9,6 +9,7 @@
 #include "fixed-frame.h"
 #include "main.h"
 
+static struct encoder_operations_s *encoder = 0;
 static int ipcFPS = 30;
 static int ipcResubmitTimeoutMS = 0;
 static int fixedWidth;
@@ -37,7 +38,7 @@ static void fixed_process_image(const void *p, ssize_t size)
 		return;
 	}
 
-	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
+	if (!encoder->encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -79,8 +80,13 @@ static void fixed_stop_capturing(void)
 {
 }
 
-static void fixed_start_capturing(void)
+static int fixed_start_capturing(struct encoder_operations_s *e)
 {
+	if (!e)
+		return -1;
+
+	encoder = e;
+	return 0;
 }
 
 static void fixed_uninit_device(void)
@@ -96,10 +102,10 @@ static int fixed_init_device(struct encoder_params_s *p, struct capture_paramete
 
 	/* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
 	/* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
-	ipcResubmitTimeoutMS = (1000 / ipcFPS) + 3;
 	printf("%s(%d, %d, %d timeout=%d)\n", __func__,
 		c->width, c->height,
 		ipcFPS, ipcResubmitTimeoutMS);
+	ipcResubmitTimeoutMS = (1000 / ipcFPS) + 3;
 
 	encoder_params->input_fourcc = E_FOURCC_YUY2;
 

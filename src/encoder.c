@@ -2204,7 +2204,7 @@ static int print_input()
 	return 0;
 }
 
-int encoder_init(struct encoder_params_s *params)
+static int encoder_init(struct encoder_params_s *params)
 {
 	assert(params);
 	printf("%s(%d, %d)\n", __func__, params->width, params->height);
@@ -2293,7 +2293,7 @@ int encoder_init(struct encoder_params_s *params)
 	return 0;
 }
 
-void encoder_close(struct encoder_params_s *params)
+static void encoder_close(struct encoder_params_s *params)
 {
 	if (IS_BGRX(params))
 		csc_free(&csc_ctx);
@@ -2302,9 +2302,10 @@ void encoder_close(struct encoder_params_s *params)
 	deinit_va();
 }
 
-void encoder_param_defaults(struct encoder_params_s *p)
+static void encoder_set_defaults(struct encoder_params_s *p)
 {
 	memset(p, 0, sizeof(*p));
+	p->type = EM_VAAPI;
 	p->initial_qp = 26;
 	p->minimal_qp = 0;
 	p->enable_osd = 0;
@@ -2318,7 +2319,7 @@ void encoder_param_defaults(struct encoder_params_s *p)
 	p->input_fourcc = E_FOURCC_UNDEFINED;
 }
 
-int encoder_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
+static int encoder_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 {
 	if ((!params) || (!inbuf))
 		return 0;
@@ -2375,5 +2376,32 @@ int encoder_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 
 	frames_processed++;
 	return 1;
+}
+
+struct encoder_operations_s vaapi_ops = 
+{
+	.type		= EM_VAAPI,
+        .name		= "Intel VAAPI Encoder",
+        .init		= encoder_init,
+        .set_defaults	= encoder_set_defaults,
+        .close		= encoder_close,
+        .encode_frame	= encoder_encode_frame,
+};
+
+static struct encoder_module_s {
+	unsigned int type;
+	struct encoder_operations_s *operations;
+} encoder_modules[] = {
+	{ EM_VAAPI, &vaapi_ops },
+};
+
+struct encoder_operations_s *getEncoderTarget(unsigned int type)
+{
+	for (unsigned int i = 0; i < (sizeof(encoder_modules) / sizeof(struct encoder_module_s)); i++) {
+		if (type == encoder_modules[i].type)
+			return encoder_modules[i].operations;
+	}
+
+	return 0;
 }
 

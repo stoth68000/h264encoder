@@ -9,6 +9,7 @@
 #include "capture.h"
 #include "main.h"
 
+static struct encoder_operations_s *encoder = 0;
 static int ipcFPS = 30;
 static int ipcResubmitTimeoutMS = 0;
 static int fixedWidth;
@@ -39,7 +40,7 @@ static void fixed_process_image(const void *p, ssize_t size)
 		return;
 	}
 
-	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
+	if (!encoder->encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -74,8 +75,13 @@ static void fixed_4k_stop_capturing(void)
 {
 }
 
-static void fixed_4k_start_capturing(void)
+static int fixed_4k_start_capturing(struct encoder_operations_s *e)
 {
+	if (!e)
+		return -1;
+
+	encoder = e;
+	return 0;
 }
 
 static void fixed_4k_uninit_device(void)

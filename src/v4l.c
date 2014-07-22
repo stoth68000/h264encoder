@@ -38,10 +38,11 @@ io_method io = IO_METHOD_MMAP;
 char *v4l_dev_name = NULL;
 char *encoder_nalOutputFilename = NULL;
 
+static struct encoder_operations_s *encoder = 0;
 static unsigned int width = 720;
 static unsigned int height = 480;
-unsigned int g_V4LNumerator = 0;
-unsigned int g_V4LFrameRate = 0;
+static unsigned int V4LNumerator = 1;
+static unsigned int V4LFrameRate = 60;
 static unsigned int g_inputnr = 0;
 static unsigned int g_signalCount = 0;
 static unsigned int g_signalLocked = 1;
@@ -85,7 +86,7 @@ static void v4l_process_image(const void *p, ssize_t size)
 		       src_frame_size);
 		return;
 	}
-	if (!encoder_encode_frame(encoder_params, (unsigned char *)p))
+	if (!encoder->encode_frame(encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -256,10 +257,15 @@ static void v4l_stop_capturing(void)
 	}
 }
 
-static void v4l_start_capturing(void)
+static int v4l_start_capturing(struct encoder_operations_s *e)
 {
 	unsigned int i;
 	enum v4l2_buf_type type;
+
+	if (!e)
+		return -1;
+
+	encoder = e;
 
 	switch (io) {
 	case IO_METHOD_READ:
@@ -310,6 +316,8 @@ static void v4l_start_capturing(void)
 
 		break;
 	}
+
+	return 0;
 }
 
 static void v4l_uninit_device(void)
@@ -454,6 +462,8 @@ static int v4l_init_device(struct encoder_params_s *p, struct capture_parameters
 	encoder_params->input_fourcc = E_FOURCC_YUY2;
 	c->width = 720;
 	c->height = 480;
+	V4LFrameRate = c->v4l.V4LFrameRate;
+	V4LNumerator = c->v4l.V4LNumerator;
 
 	g_syncStall = c->v4l.syncstall;
 
@@ -610,15 +620,15 @@ static int v4l_init_device(struct encoder_params_s *p, struct capture_parameters
 	struct v4l2_streamparm capp;
 	CLEAR(capp);
 	capp.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	if (g_V4LFrameRate) {
+	if (V4LFrameRate) {
 		if (-1 == (xioctl(fd, VIDIOC_G_PARM, &capp) == -1)) {
 			errno_exit("VIDIOC_G_PARM");
 		}
 		printf("vidioc_s_parm called frate=%d/%d\n",
 		       capp.parm.capture.timeperframe.numerator,
 		       capp.parm.capture.timeperframe.denominator);
-		capp.parm.capture.timeperframe.numerator = g_V4LNumerator;
-		capp.parm.capture.timeperframe.denominator = g_V4LFrameRate;
+		capp.parm.capture.timeperframe.numerator = V4LNumerator;
+		capp.parm.capture.timeperframe.denominator = V4LFrameRate;
 		printf("vidioc_s_parm set: frate=%d/%d\n",
 		       capp.parm.capture.timeperframe.numerator,
 		       capp.parm.capture.timeperframe.denominator);
