@@ -972,8 +972,8 @@ static int init_vpp(struct encoder_params_s *params)
 	// e.g. upper left corner for the first surface
 	vpp_output_region.x      = 0;
 	vpp_output_region.y      = 0;
-	vpp_output_region.width  = frame_width;
-	vpp_output_region.height = frame_height;
+	vpp_output_region.width  = frame_width_mbaligned;
+	vpp_output_region.height = frame_height_mbaligned;
 
 	return 0;
 }
@@ -2287,7 +2287,8 @@ int encoder_init(struct encoder_params_s *params)
 	setup_encode();
 
 	if (IS_BGRX(params))
-		csc_alloc(&csc_ctx, va_dpy, vpp_config, vpp_context, params->width, params->height);
+		csc_alloc(&csc_ctx, va_dpy, vpp_config, vpp_context,
+			frame_width_mbaligned, frame_height_mbaligned);
 
 	return 0;
 }
