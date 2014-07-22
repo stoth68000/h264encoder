@@ -24,6 +24,12 @@ static void signalHandler(int a_Signal)
 	signal(SIGINT, SIG_DFL);
 }
 
+static void signalTermHandler(int a_Signal)
+{
+	time_to_quit = 1;
+	signal(SIGTERM, SIG_DFL);
+}
+
 static void usage(int argc, char **argv)
 {
 	struct encoder_params_s p;
@@ -304,6 +310,10 @@ int main(int argc, char **argv)
 	}
 
 	if (signal(SIGINT, signalHandler) == SIG_ERR) {
+		printf("signal() failed\n");
+		time_to_quit = 1;
+	}
+	if (signal(SIGTERM, signalTermHandler) == SIG_ERR) {
 		printf("signal() failed\n");
 		time_to_quit = 1;
 	}
