@@ -143,15 +143,17 @@ int main(int argc, char **argv)
 		PAYLOAD_RTP_ES
 	} payloadMode = PAYLOAD_RTP_TS;
 
-	/* We currently support a single encoder type (VAAPI) */
+	memset(&capture_params, 0, sizeof(capture_params));
+
+	/* We currently support a single H.264 encoder type (VAAPI).
+	 * Grab an interface to it.
+	 */
 	encoder = getEncoderTarget(EM_VAAPI);
 	if (!encoder) {
 		printf("Invalid encoder target, no encoder selected\n");
 		exit(1);
 	}
 	encoder->set_defaults(&encoder_params);
-
-	memset(&capture_params, 0, sizeof(capture_params));
 
 	for (;;) {
 		int index;
@@ -342,12 +344,14 @@ int main(int argc, char **argv)
 		goto encoder_failed;
 	}
 
-	/* Init the capture source */
+	/* Init the capture source. Suggest we want a certain width/height.
+	 * Source can/will update the width / height.
+	 */
 	capture_params.width = width;
 	capture_params.height = height;
 	source->init(&encoder_params, &capture_params);
 
-	/* Initialize the encoder */
+	/* Initialize the encoder with the sources mandatory width / height */
 	encoder_params.height = capture_params.height;
 	encoder_params.width = capture_params.width;
 	if (encoder->init(&encoder_params)) {
@@ -357,7 +361,8 @@ int main(int argc, char **argv)
 
 	printf("%s Capture: %dx%d %d/%d [osd: %s]\n",
 		source->name,
-		width, height,
+		encoder_params.width,
+		encoder_params.height,
 		V4LNumerator, V4LFrameRate,
 		encoder_params.enable_osd ? "Enabled" : "Disabled");
 
@@ -371,26 +376,22 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	/* TODO: Convert the RTP output mechanisms into a single interface and instantiate a common API.  */
-
 	/* RPT/ES , routed out via RTP */
-	if ((payloadMode == PAYLOAD_RTP_ES) &&
-		((source->type == CM_V4L) || (source->type == CM_IPCVIDEO) ||
-		(source->type == CM_FIXED) || (source->type == CM_FIXED_4K)) &&
-		ipport && (initRTPHandler(ipaddress, ipport, width, height, V4LFrameRate) < 0))
-	{
-		printf("Error: RTP init failed\n");
-		goto rtp_failed;
+	if ((payloadMode == PAYLOAD_RTP_ES) && ipport) {
+	 	if (initRTPHandler(ipaddress, ipport,
+			encoder_params.width, encoder_params.height, V4LFrameRate) < 0) {
+			printf("Error: RTP init failed\n");
+			goto rtp_failed;
+		}
 	}
 
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
-	if ((payloadMode == PAYLOAD_RTP_TS) &&
-		((source->type == CM_V4L) || (source->type == CM_IPCVIDEO) ||
-		(source->type == CM_FIXED) || (source->type == CM_FIXED_4K)) &&
-		ipport && (initESHandler(ipaddress, ipport, dscp, pktsize, width, height, V4LFrameRate) < 0))
-	{
-		printf("Error: ES2TS init failed\n");
-		goto rtp_failed;
+	if ((payloadMode == PAYLOAD_RTP_TS) && ipport) {
+		if (initESHandler(ipaddress, ipport, dscp, pktsize,
+			encoder_params.width, encoder_params.height, V4LFrameRate) < 0) {
+			printf("Error: ES2TS init failed\n");
+			goto rtp_failed;
+		}
 	}
 
 	/* Start, capture content and stop the device, the main processing */
