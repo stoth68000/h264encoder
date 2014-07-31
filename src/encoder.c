@@ -179,6 +179,8 @@ static int encode_syncmode = 0;
 static pthread_mutex_t encode_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t encode_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t encode_thread = -1;
+static int encode_thread_terminate = 0;
+static int encode_thread_terminated = 0;
 
 static struct encoder_display_context display_ctx;
 
@@ -1945,7 +1947,10 @@ static void storage_task(unsigned long long display_order,
 
 static void *storage_task_thread(void *t)
 {
-	while (1) {
+	encode_thread_terminate = 0;
+	encode_thread_terminated = 0;
+
+	while (!encode_thread_terminate) {
 		struct storage_task_t *current;
 
 		current = storage_task_dequeue();
@@ -1961,6 +1966,8 @@ static void *storage_task_thread(void *t)
 		free(current);
 	}
 
+	encode_thread_terminated = 1;
+	pthread_exit(0);
 	return 0;
 }
 
@@ -2295,6 +2302,11 @@ static int encoder_init(struct encoder_params_s *params)
 
 static void encoder_close(struct encoder_params_s *params)
 {
+	encode_thread_terminate = 1;
+	encode_thread_terminated = 0;
+	while (!encode_thread_terminated)
+		usleep(250 * 1000);
+
 	if (IS_BGRX(params))
 		csc_free(&csc_ctx);
 
