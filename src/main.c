@@ -51,6 +51,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"-p, --ipport=9999             Remote IP RTP port\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
 		"    --packet-size=XXX         Use an alternate packet size\n"
+		"    --ifd=N                   Specify an interframe delay in microseconds\n"
 		"-f, --v4lframerate=FPS        Framerate [no limit]\n"
 		"-n, --v4lnumerator=NUM        Numerator [no limit]\n"
 		"    --v4lsyncstall <number>   Stop encoding if V4L input loses sync 0:false 1:true [def: 0]\n"
@@ -116,8 +117,9 @@ static const struct option long_options[] = {
 	{ "minimal_qp", required_argument, NULL, 8 },
 	{ "dscp", required_argument, NULL, 9 },
 	{ "packet-size", required_argument, NULL, 10 },
-	{ "v4lsyncstall", required_argument, NULL, 11 },
-	{ "payloadmode", required_argument, NULL, 12 },
+	{ "ifd", required_argument, NULL, 11 },
+	{ "v4lsyncstall", required_argument, NULL, 12 },
+	{ "payloadmode", required_argument, NULL, 13 },
 
 	{ 0, 0, 0, 0}
 };
@@ -130,7 +132,7 @@ int main(int argc, char **argv)
 	struct encoder_operations_s *encoder = 0;
 
 	char *ipaddress = "192.168.0.67";
-	int ipport = 0, dscp = 0, pktsize = 0;
+	int ipport = 0, dscp = 0, pktsize = 0, ifd = 0;
 	v4l_dev_name = (char *)"/dev/video0";
 	int req_deint_mode = -1;
 	int syncstall = 0;
@@ -275,9 +277,12 @@ int main(int argc, char **argv)
 			pktsize = atoi(optarg);
 			break;
 		case 11:
-			syncstall = atoi(optarg);
+			ifd = atoi(optarg);
 			break;
 		case 12:
+			syncstall = atoi(optarg);
+			break;
+		case 13:
 			payloadMode = (enum payloadMode_e)atoi(optarg) & 1;
 			break;
 		case 'W':
@@ -378,7 +383,7 @@ int main(int argc, char **argv)
 
 	/* RPT/ES , routed out via RTP */
 	if ((payloadMode == PAYLOAD_RTP_ES) && ipport) {
-	 	if (initRTPHandler(ipaddress, ipport, dscp, pktsize,
+	 	if (initRTPHandler(ipaddress, ipport, dscp, pktsize, ifd,
 			encoder_params.width, encoder_params.height, V4LFrameRate) < 0) {
 			printf("Error: RTP init failed\n");
 			goto rtp_failed;
@@ -387,7 +392,7 @@ int main(int argc, char **argv)
 
 	/* the NAL/es to TS conversion layer, while routes out via RTP */
 	if ((payloadMode == PAYLOAD_RTP_TS) && ipport) {
-		if (initESHandler(ipaddress, ipport, dscp, pktsize,
+		if (initESHandler(ipaddress, ipport, dscp, pktsize, ifd,
 			encoder_params.width, encoder_params.height, V4LFrameRate) < 0) {
 			printf("Error: ES2TS init failed\n");
 			goto rtp_failed;

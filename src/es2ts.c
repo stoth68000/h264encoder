@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <libes2ts/es2ts.h>
 #include <libavformat/avformat.h>
+#include <libavutil/opt.h>
 
 /* Compatibility with older versions of ffmpeg */
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54,59,100)
@@ -14,8 +15,9 @@ static struct es2ts_context_s *es2ts_ctx = 0;
 static AVFormatContext *tsav_ctx = NULL;
 static AVOutputFormat *tsav_fmt = NULL;
 static AVStream *tsav_strm = NULL;
+static int tsav_ifd = 0;
 
-static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int h, int fps)
+static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int ifd, int w, int h, int fps)
 {
 	char filename[64];
 
@@ -33,6 +35,7 @@ static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int pktsize
 	}
 
 	tsav_ctx->oformat = tsav_fmt;
+	tsav_ifd = ifd;
 
 	/* try to open the RTP stream */
 	snprintf(filename, sizeof(filename), "rtp://%s:%d?dscp=%d&pkt_size=%d", ipaddress, port,
@@ -73,6 +76,10 @@ static int es2ts_sendTSBufferAsRTP(unsigned char *tsbuf, int len)
 {
 	if (tsav_ctx == NULL)
 		return 0;
+	if (tsav_ifd > 0) {
+		av_opt_set_int(tsav_ctx, "ifd", tsav_ifd, AV_OPT_SEARCH_CHILDREN);
+		tsav_ifd = 0;
+	}
 #if 1
 	AVPacket p;
 	av_init_packet(&p);
@@ -150,11 +157,11 @@ int sendESPacket(unsigned char *nal, int len)
 	return 0;
 }
 
-int initESHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int h, int fps)
+int initESHandler(char *ipaddress, int port, int dscp, int pktsize, int ifd, int w, int h, int fps)
 {
 	int ret;
 
-	ret = es2ts_initRTPHandler(ipaddress, port, dscp, pktsize, w, h, fps);
+	ret = es2ts_initRTPHandler(ipaddress, port, dscp, pktsize, ifd, w, h, fps);
 	if (ret < 0)
 		return -1;
 

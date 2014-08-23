@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <libavformat/avformat.h>
+#include <libavutil/opt.h>
 
 /* Compatibility with older versions of ffmpeg */
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54,59,100)
@@ -12,6 +13,7 @@
 static AVFormatContext *av_ctx = NULL;
 static AVOutputFormat *av_fmt = NULL;
 static AVStream *av_strm = NULL;
+static int av_ifd = 0;
 
 void freeRTPHandler()
 {
@@ -19,7 +21,7 @@ void freeRTPHandler()
 		avformat_free_context(av_ctx);
 }
 
-int initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int h, int fps)
+int initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int ifd, int w, int h, int fps)
 {
 	char filename[64];
 
@@ -37,6 +39,7 @@ int initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int 
 	}
 
 	av_ctx->oformat = av_fmt;
+	av_ifd = ifd;
 
 	/* try to open the RTP stream */
 	snprintf(filename, sizeof(filename), "rtp://%s:%d?dscp=%d&pkt_size=%d", ipaddress, port,
@@ -77,6 +80,10 @@ int sendRTPPacket(unsigned char *nal, int len)
 {
 	if (av_ctx == NULL)
 		return 0;
+	if (av_ifd > 0) {
+		av_opt_set_int(av_ctx, "ifd", av_ifd, AV_OPT_SEARCH_CHILDREN);
+		av_ifd = 0;
+	}
 
 	AVPacket p;
 	av_init_packet(&p);
