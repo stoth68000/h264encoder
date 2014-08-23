@@ -378,7 +378,7 @@ int main(int argc, char **argv)
 
 	/* RPT/ES , routed out via RTP */
 	if ((payloadMode == PAYLOAD_RTP_ES) && ipport) {
-	 	if (initRTPHandler(ipaddress, ipport,
+	 	if (initRTPHandler(ipaddress, ipport, dscp, pktsize,
 			encoder_params.width, encoder_params.height, V4LFrameRate) < 0) {
 			printf("Error: RTP init failed\n");
 			goto rtp_failed;

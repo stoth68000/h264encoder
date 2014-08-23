@@ -19,7 +19,7 @@ void freeRTPHandler()
 		avformat_free_context(av_ctx);
 }
 
-int initRTPHandler(char *ipaddress, int port, int w, int h, int fps)
+int initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int w, int h, int fps)
 {
 	char filename[64];
 
@@ -39,7 +39,8 @@ int initRTPHandler(char *ipaddress, int port, int w, int h, int fps)
 	av_ctx->oformat = av_fmt;
 
 	/* try to open the RTP stream */
-	snprintf(filename, sizeof(filename), "rtp://%s:%d", ipaddress, port);
+	snprintf(filename, sizeof(filename), "rtp://%s:%d?dscp=%d&pkt_size=%d", ipaddress, port,
+		 dscp, pktsize?pktsize:-1);
 	printf("Streaming to %s\n", filename);
 	if (avio_open(&(av_ctx->pb), filename, AVIO_FLAG_WRITE) < 0) {
 		printf("Couldn't open RTP output stream\n");
