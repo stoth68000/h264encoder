@@ -121,7 +121,7 @@ static int constraint_set_flag = 0;
 static int h264_packedheader = 0;	/* support pack header? */
 static int h264_maxref = (1 << 16 | 1);
 static int h264_entropy_mode = 1;	/* cabac */
-static unsigned int encoder_frame_bitrate = 3000000;
+static unsigned int encoder_frame_bitrate = 3000000; /* bps */
 
 static FILE *nal_fp = NULL;
 FILE *csv_fp = NULL;
@@ -140,7 +140,6 @@ static int frame_height_mbaligned;
 static int frame_rate = 30;
 static unsigned int frame_count = 60;
 static unsigned long long frames_processed = 0;
-extern unsigned int encoder_frame_bitrate;
 static unsigned int frame_slices = 1;
 static int initial_qp = 26;
 static int minimal_qp = 0;
