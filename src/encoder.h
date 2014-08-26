@@ -44,7 +44,7 @@ struct encoder_params_s
 	unsigned int h264_entropy_mode;
 	int rc_mode;
 
-	unsigned int frame_bitrate;
+	unsigned int frame_bitrate; /* bps */
 	enum fourcc_e input_fourcc;
 };
 
