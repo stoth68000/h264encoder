@@ -364,10 +364,11 @@ static void sps_rbsp(struct encoder_params_s *params, bitstream * bs)
 		bitstream_put_ue(bs, seq_param.frame_crop_top_offset);	/* frame_crop_top_offset */
 		bitstream_put_ue(bs, seq_param.frame_crop_bottom_offset);	/* frame_crop_bottom_offset */
 	}
-	//if ( frame_bit_rate < 0 ) { //TODO EW: the vui header isn't correct
-	if (1) {
+
+	if (params->frame_bitrate == 0) {
 		bitstream_put_ui(bs, 0, 1);	/* vui_parameters_present_flag */
 	} else {
+		/* taken from avcenc.c during Aug 2014, considered valid */
 		bitstream_put_ui(bs, 1, 1);	/* vui_parameters_present_flag */
 		bitstream_put_ui(bs, 0, 1);	/* aspect_ratio_info_present_flag */
 		bitstream_put_ui(bs, 0, 1);	/* overscan_info_present_flag */
@@ -381,12 +382,12 @@ static void sps_rbsp(struct encoder_params_s *params, bitstream * bs)
 		}
 		bitstream_put_ui(bs, 1, 1);	/* nal_hrd_parameters_present_flag */
 		{
-			// hrd_parameters 
-			bitstream_put_ue(bs, 0);	/* cpb_cnt_minus1 */
-
 			/* TODO: This implies a Kbps scale? */
 			/* https://gitorious.org/vaapi/mprs-gstreamer-vaapi/commit/9d42c864229b9f03ec3f21a838c7b7a73325c11a */
 			/*  */
+
+			// hrd_parameters 
+			bitstream_put_ue(bs, 0);	/* cpb_cnt_minus1 */
 			bitstream_put_ui(bs, 4, 4);	/* bit_rate_scale */
 			bitstream_put_ui(bs, 6, 4);	/* cpb_size_scale */
 
@@ -1638,7 +1639,6 @@ static int render_packedpicture(void)
 	return 0;
 }
 
-#if 1
 static void render_packedsei(struct encoder_params_s *params)
 {
 	VAEncPackedHeaderParameterBuffer packed_header_param_buffer;
@@ -1741,7 +1741,6 @@ static int render_hrd(struct encoder_params_s *params)
 
 	return 0;
 }
-#endif
 
 static int render_slice(void)
 {
