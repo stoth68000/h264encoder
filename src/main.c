@@ -71,7 +71,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --rcmode <NONE|CBR|VBR|VCM|CQP|VBR_CONSTRAINED> [def: %s]\n"
 		"    --entropy <0|1>, 1 means cabac, 0 cavlc [def: %d]\n"
 		"    --profile <BP|CBP|MP|HP>  [def: %s]\n"
-		"    --payloadmode <0|1>, 0 means RTP/TS, 1 RTP/ES [def: 0]\n",
+		"    --payloadmode <0|1>, 0 means RTP/TS, 1 RTP/ES [def: 0]\n"
+		"    --level_idc <number>      [def: %d]\n",
 			p.initial_qp,
 			p.minimal_qp,
 			p.intra_period,
@@ -79,7 +80,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 			p.ip_period,
 			encoder_rc_to_string(p.rc_mode),
 			p.h264_entropy_mode,
-			encoder_profile_to_string(p.h264_profile)
+			encoder_profile_to_string(p.h264_profile),
+			p.level_idc
 	       );
 }
 
@@ -120,6 +122,7 @@ static const struct option long_options[] = {
 	{ "ifd", required_argument, NULL, 11 },
 	{ "v4lsyncstall", required_argument, NULL, 12 },
 	{ "payloadmode", required_argument, NULL, 13 },
+	{ "level_idc", required_argument, NULL, 14 },
 
 	{ 0, 0, 0, 0}
 };
@@ -284,6 +287,9 @@ int main(int argc, char **argv)
 			break;
 		case 13:
 			payloadMode = (enum payloadMode_e)atoi(optarg) & 1;
+			break;
+		case 14:
+			encoder_params.level_idc = atoi(optarg);
 			break;
 		case 'W':
 			width = atoi(optarg);

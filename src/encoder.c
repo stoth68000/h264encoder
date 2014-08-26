@@ -1366,14 +1366,14 @@ static int update_RefPicList(void)
 	return 0;
 }
 
-static int render_sequence(void)
+static int render_sequence(struct encoder_params_s *params)
 {
 	VABufferID seq_param_buf, rc_param_buf, misc_param_tmpbuf, render_id[2];
 	VAStatus va_status;
 	VAEncMiscParameterBuffer *misc_param, *misc_param_tmp;
 	VAEncMiscParameterRateControl *misc_rate_ctrl;
 
-	seq_param.level_idc = 41 /*SH_LEVEL_3 */ ;
+	seq_param.level_idc = params->level_idc;
 	seq_param.picture_width_in_mbs = frame_width_mbaligned / 16;
 	seq_param.picture_height_in_mbs = frame_height_mbaligned / 16;
 	seq_param.bits_per_second = encoder_frame_bitrate;
@@ -2128,7 +2128,7 @@ static int encode_frame(struct encoder_params_s *params, unsigned char *frame)
 	CHECK_VASTATUS(va_status, "vaBeginPicture");
 
 	if (current_frame_type == FRAME_IDR) {
-		render_sequence();
+		render_sequence(params);
 		render_picture();
 		if (h264_packedheader) {
 			render_packedsequence();
@@ -2138,7 +2138,7 @@ static int encode_frame(struct encoder_params_s *params, unsigned char *frame)
 		    render_packedsei();
 		render_hrd();
 	} else {
-		//render_sequence();
+		//render_sequence(params);
 		render_picture();
 		if (rc_mode == VA_RC_CBR)
 		    render_packedsei();
@@ -2191,7 +2191,7 @@ static int deinit_va()
 	return 0;
 }
 
-static int print_input()
+static int print_input(struct encoder_params_s *params)
 {
 	printf("\n\nINPUT:Try to encode H264...\n");
 	printf("INPUT: RateControl  : %s\n", encoder_rc_to_string(rc_mode));
@@ -2205,6 +2205,7 @@ static int print_input()
 	printf("INPUT: IpPeriod     : %d\n", ip_period);
 	printf("INPUT: Initial QP   : %d\n", initial_qp);
 	printf("INPUT: Min QP       : %d\n", minimal_qp);
+	printf("INPUT: Level IDC    : %d\n", params->level_idc);
 	printf("INPUT: Coded Clip   : %s\n", encoder_nalOutputFilename ? encoder_nalOutputFilename : "N/A");
 	printf("\n\n");		/* return back to startpoint */
 
@@ -2283,7 +2284,7 @@ static int encoder_init(struct encoder_params_s *params)
 		     frame_height_mbaligned);
 	}
 
-	print_input();
+	print_input(params);
 
 	init_va();
 	if (init_vpp(params) < 0) {
@@ -2325,6 +2326,7 @@ static void encoder_set_defaults(struct encoder_params_s *p)
 	p->idr_period = 60;
 	p->ip_period = 1;
 	p->h264_profile = VAProfileH264High;
+	p->level_idc = 41;
 	p->h264_entropy_mode = 1;
 	p->rc_mode = VA_RC_VBR;
 	p->frame_bitrate = 3000000;

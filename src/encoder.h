@@ -5,6 +5,7 @@
 #include <va/va.h>
 #include <va/va_drmcommon.h>
 #include <va/va_vpp.h>
+#include <va/va_enc_h264.h>
 
 #define IS_YUY2(p) ((p)->input_fourcc == E_FOURCC_YUY2)
 #define IS_BGRX(p) ((p)->input_fourcc == E_FOURCC_BGRX)
@@ -39,6 +40,7 @@ struct encoder_params_s
 	unsigned int idr_period;
 	unsigned int ip_period;
 	VAProfile h264_profile;
+	unsigned char level_idc;
 	unsigned int h264_entropy_mode;
 	int rc_mode;
 
