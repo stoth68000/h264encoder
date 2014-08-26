@@ -1725,9 +1725,9 @@ static int render_hrd(void)
 	misc_hrd_param = (VAEncMiscParameterHRD *) misc_param->data;
 
 	if (encoder_frame_bitrate > 0) {
-		misc_hrd_param->initial_buffer_fullness =
-		    encoder_frame_bitrate * 1024 * 4;
-		misc_hrd_param->buffer_size = encoder_frame_bitrate * 1024 * 8;
+		/* Struct expects bps */
+		misc_hrd_param->initial_buffer_fullness = encoder_frame_bitrate * 4;
+		misc_hrd_param->buffer_size = encoder_frame_bitrate * 8;
 	} else {
 		misc_hrd_param->initial_buffer_fullness = 0;
 		misc_hrd_param->buffer_size = 0;
