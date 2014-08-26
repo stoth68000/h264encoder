@@ -384,11 +384,15 @@ static void sps_rbsp(bitstream * bs)
 		{
 			// hrd_parameters 
 			bitstream_put_ue(bs, 0);	/* cpb_cnt_minus1 */
+
+			/* TODO: This implies a Kbps scale? */
+			/* https://gitorious.org/vaapi/mprs-gstreamer-vaapi/commit/9d42c864229b9f03ec3f21a838c7b7a73325c11a */
+			/*  */
 			bitstream_put_ui(bs, 4, 4);	/* bit_rate_scale */
 			bitstream_put_ui(bs, 6, 4);	/* cpb_size_scale */
 
-			bitstream_put_ue(bs, encoder_frame_bitrate - 1);	/* bit_rate_value_minus1[0] */
-			bitstream_put_ue(bs, encoder_frame_bitrate * 8 - 1);	/* cpb_size_value_minus1[0] */
+			bitstream_put_ue(bs, (encoder_frame_bitrate / 1000) - 1); /* bit_rate_value_minus1[0] */
+			bitstream_put_ue(bs, (encoder_frame_bitrate >> 6) - 1);	/* cpb_size_value_minus1[0]. Min 6 */
 			bitstream_put_ui(bs, 1, 1);	/* cbr_flag[0] */
 
 			bitstream_put_ui(bs, 23, 5);	/* initial_cpb_removal_delay_length_minus1 */
