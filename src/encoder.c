@@ -121,7 +121,6 @@ static int constraint_set_flag = 0;
 static int h264_packedheader = 0;	/* support pack header? */
 static int h264_maxref = (1 << 16 | 1);
 static int h264_entropy_mode = 1;	/* cabac */
-static unsigned int encoder_frame_bitrate = 3000000; /* bps */
 
 static FILE *nal_fp = NULL;
 FILE *csv_fp = NULL;
@@ -310,7 +309,7 @@ static void nal_header(bitstream * bs, int nal_ref_idc, int nal_unit_type)
 	bitstream_put_ui(bs, nal_unit_type, 5);
 }
 
-static void sps_rbsp(bitstream * bs)
+static void sps_rbsp(struct encoder_params_s *params, bitstream * bs)
 {
 	int profile_idc = PROFILE_IDC_BASELINE;
 
@@ -391,8 +390,8 @@ static void sps_rbsp(bitstream * bs)
 			bitstream_put_ui(bs, 4, 4);	/* bit_rate_scale */
 			bitstream_put_ui(bs, 6, 4);	/* cpb_size_scale */
 
-			bitstream_put_ue(bs, (encoder_frame_bitrate / 1000) - 1); /* bit_rate_value_minus1[0] */
-			bitstream_put_ue(bs, (encoder_frame_bitrate >> 6) - 1);	/* cpb_size_value_minus1[0]. Min 6 */
+			bitstream_put_ue(bs, (params->frame_bitrate / 1000) - 1); /* bit_rate_value_minus1[0] */
+			bitstream_put_ue(bs, (params->frame_bitrate >> 6) - 1);	/* cpb_size_value_minus1[0]. Min 6 */
 			bitstream_put_ui(bs, 1, 1);	/* cbr_flag[0] */
 
 			bitstream_put_ui(bs, 23, 5);	/* initial_cpb_removal_delay_length_minus1 */
@@ -457,14 +456,14 @@ static int build_packed_pic_buffer(unsigned char **header_buffer)
 	return bs.bit_offset;
 }
 
-static int build_packed_seq_buffer(unsigned char **header_buffer)
+static int build_packed_seq_buffer(struct encoder_params_s *params, unsigned char **header_buffer)
 {
 	bitstream bs;
 
 	bitstream_start(&bs);
 	nal_start_code_prefix(&bs);
 	nal_header(&bs, NAL_REF_IDC_HIGH, NAL_SPS);
-	sps_rbsp(&bs);
+	sps_rbsp(params, &bs);
 	bitstream_end(&bs);
 
 	*header_buffer = (unsigned char *)bs.buffer;
@@ -1379,7 +1378,7 @@ static int render_sequence(struct encoder_params_s *params)
 	seq_param.level_idc = params->level_idc;
 	seq_param.picture_width_in_mbs = frame_width_mbaligned / 16;
 	seq_param.picture_height_in_mbs = frame_height_mbaligned / 16;
-	seq_param.bits_per_second = encoder_frame_bitrate;
+	seq_param.bits_per_second = params->frame_bitrate;
 
 	seq_param.intra_period = intra_period;
 	seq_param.intra_idr_period = intra_idr_period;
@@ -1425,7 +1424,7 @@ static int render_sequence(struct encoder_params_s *params)
 	misc_param->type = VAEncMiscParameterTypeRateControl;
 	misc_rate_ctrl = (VAEncMiscParameterRateControl *) misc_param->data;
 	memset(misc_rate_ctrl, 0, sizeof(*misc_rate_ctrl));
-	misc_rate_ctrl->bits_per_second = encoder_frame_bitrate;
+	misc_rate_ctrl->bits_per_second = params->frame_bitrate;
 	misc_rate_ctrl->target_percentage = 66;
 	misc_rate_ctrl->window_size = 1000;
 	misc_rate_ctrl->initial_qp = initial_qp;
@@ -1556,7 +1555,7 @@ static int render_picture(void)
 	return 0;
 }
 
-static int render_packedsequence(void)
+static int render_packedsequence(struct encoder_params_s *params)
 {
 	VAEncPackedHeaderParameterBuffer packedheader_param_buffer;
 	VABufferID packedseq_para_bufid, packedseq_data_bufid, render_id[2];
@@ -1564,7 +1563,7 @@ static int render_packedsequence(void)
 	unsigned char *packedseq_buffer = NULL;
 	VAStatus va_status;
 
-	length_in_bits = build_packed_seq_buffer(&packedseq_buffer);
+	length_in_bits = build_packed_seq_buffer(params, &packedseq_buffer);
 
 	packedheader_param_buffer.type = VAEncPackedHeaderSequence;
 
@@ -1640,7 +1639,7 @@ static int render_packedpicture(void)
 }
 
 #if 1
-static void render_packedsei(void)
+static void render_packedsei(struct encoder_params_s *params)
 {
 	VAEncPackedHeaderParameterBuffer packed_header_param_buffer;
 	VABufferID packed_sei_header_param_buf_id, packed_sei_buf_id,
@@ -1654,7 +1653,7 @@ static void render_packedsei(void)
 	    i_cpb_removal_delay_length;
 
 	/* it comes for the bps defined in SPS */
-	target_bit_rate = encoder_frame_bitrate;
+	target_bit_rate = params->frame_bitrate;
 	init_cpb_size = (target_bit_rate * 8) >> 10;
 	i_initial_cpb_removal_delay =
 	    init_cpb_size * 0.5 * 1024 / target_bit_rate * 90000;
@@ -1706,7 +1705,7 @@ static void render_packedsei(void)
 	return;
 }
 
-static int render_hrd(void)
+static int render_hrd(struct encoder_params_s *params)
 {
 	VABufferID misc_parameter_hrd_buf_id;
 	VAStatus va_status;
@@ -1724,10 +1723,10 @@ static int render_hrd(void)
 	misc_param->type = VAEncMiscParameterTypeHRD;
 	misc_hrd_param = (VAEncMiscParameterHRD *) misc_param->data;
 
-	if (encoder_frame_bitrate > 0) {
+	if (params->frame_bitrate > 0) {
 		/* Struct expects bps */
-		misc_hrd_param->initial_buffer_fullness = encoder_frame_bitrate * 4;
-		misc_hrd_param->buffer_size = encoder_frame_bitrate * 8;
+		misc_hrd_param->initial_buffer_fullness = params->frame_bitrate * 4;
+		misc_hrd_param->buffer_size = params->frame_bitrate * 8;
 	} else {
 		misc_hrd_param->initial_buffer_fullness = 0;
 		misc_hrd_param->buffer_size = 0;
@@ -2134,18 +2133,18 @@ static int encode_frame(struct encoder_params_s *params, unsigned char *frame)
 		render_sequence(params);
 		render_picture();
 		if (h264_packedheader) {
-			render_packedsequence();
+			render_packedsequence(params);
 			render_packedpicture();
 		}
 		if (rc_mode == VA_RC_CBR)
-		    render_packedsei();
-		render_hrd();
+		    render_packedsei(params);
+		render_hrd(params);
 	} else {
 		//render_sequence(params);
 		render_picture();
 		if (rc_mode == VA_RC_CBR)
-		    render_packedsei();
-		render_hrd();
+		    render_packedsei(params);
+		render_hrd(params);
 	}
 	render_slice();
 
@@ -2201,7 +2200,7 @@ static int print_input(struct encoder_params_s *params)
 	printf("INPUT: Resolution   : %dx%d, %d frames\n",
 	       frame_width, frame_height, frame_count);
 	printf("INPUT: FrameRate    : %d\n", frame_rate);
-	printf("INPUT: Bitrate      : %d\n", encoder_frame_bitrate);
+	printf("INPUT: Bitrate      : %d\n", params->frame_bitrate);
 	printf("INPUT: Slices       : %d\n", frame_slices);
 	printf("INPUT: IntraPeriod  : %d\n", intra_period);
 	printf("INPUT: IDRPeriod    : %d\n", intra_idr_period);
@@ -2250,7 +2249,6 @@ static int encoder_init(struct encoder_params_s *params)
 	ip_period = params->ip_period;
 	h264_entropy_mode = params->h264_entropy_mode;
 	rc_mode = params->rc_mode;
-	encoder_frame_bitrate = params->frame_bitrate;
 
 	current_frame_encoding = 0;
 	encode_syncmode = 0;
