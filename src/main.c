@@ -11,6 +11,7 @@
 
 #include "capture.h"
 #include "rtp.h"
+#include "mxcvpuudp.h"
 #include "encoder.h"
 #include "es2ts.h"
 #include "main.h"
@@ -49,6 +50,9 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"-O, --csv=filename            Record output frames to a file\n"
 		"-i, --ipaddress=a.b.c.d       Remote IP RTP address\n"
 		"-p, --ipport=9999             Remote IP RTP port\n"
+		"    --mxc_ipaddress=a.b.c.d   Freescale MXC_VPU_TEST UDP IP address\n"
+		"    --mxc_ipport=9999         Freescale MXC_CPU_TEST UDP port\n"
+		"    --mxc_endian <0,1>        0 = little, 1 = big [def: 1]\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
 		"    --packet-size=XXX         Use an alternate packet size\n"
 		"    --ifd=N                   Specify an interframe delay in microseconds\n"
@@ -123,6 +127,9 @@ static const struct option long_options[] = {
 	{ "v4lsyncstall", required_argument, NULL, 12 },
 	{ "payloadmode", required_argument, NULL, 13 },
 	{ "level_idc", required_argument, NULL, 14 },
+	{ "mxc_ipaddress", required_argument, NULL, 15 },
+	{ "mxc_ipport", required_argument, NULL, 16 },
+	{ "mxc_endian", required_argument, NULL, 17 },
 
 	{ 0, 0, 0, 0}
 };
@@ -142,6 +149,8 @@ int main(int argc, char **argv)
 	int width = 720, height = 480;
 	int V4LFrameRate = 0;
 	int V4LNumerator = 0;
+	char *mxc_ipaddress = "192.168.0.67";
+	int mxc_ipport = 0, mxc_endian = 1;
 
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
@@ -291,6 +300,15 @@ int main(int argc, char **argv)
 		case 14:
 			encoder_params.level_idc = atoi(optarg);
 			break;
+		case 15:
+			mxc_ipaddress = optarg;
+			break;
+		case 16:
+			mxc_ipport = atoi(optarg);
+			break;
+		case 17:
+			mxc_endian = atoi(optarg) & 1;
+			break;
 		case 'W':
 			width = atoi(optarg);
 			break;
@@ -370,12 +388,13 @@ int main(int argc, char **argv)
 		goto encoder_failed;
 	}
 
-	printf("%s Capture: %dx%d %d/%d [osd: %s]\n",
+	printf("%s Capture: %dx%d %d/%d [osd: %s] [mxc_streaming: %s\\n",
 		source->name,
 		encoder_params.width,
 		encoder_params.height,
 		V4LNumerator, V4LFrameRate,
-		encoder_params.enable_osd ? "Enabled" : "Disabled");
+		encoder_params.enable_osd ? "Enabled" : "Disabled",
+		mxc_ipport ? "Enabled" : "Disabled");
 
 #if 0
 	/* Open the 'nals via rtp' mechanism if requested, but only for the internal GL demo app */
@@ -387,12 +406,18 @@ int main(int argc, char **argv)
 	}
 #endif
 
+	/* Open the 'nals via freescale UDP proprietary' mechanism if requested */
+	if (mxc_ipport && (initMXCVPUUDPHandler(mxc_ipaddress, mxc_ipport, 1048576, mxc_endian) < 0)) {
+		printf("Error: MXCVPUUDP init failed\n");
+		goto rtp_failed;
+	}
+
 	/* RPT/ES , routed out via RTP */
 	if ((payloadMode == PAYLOAD_RTP_ES) && ipport) {
 	 	if (initRTPHandler(ipaddress, ipport, dscp, pktsize, ifd,
 			encoder_params.width, encoder_params.height, V4LFrameRate) < 0) {
 			printf("Error: RTP init failed\n");
-			goto rtp_failed;
+			goto mxc_failed;
 		}
 	}
 
@@ -418,6 +443,10 @@ start_failed:
 	encoder->close(&encoder_params);
 
 	freeESHandler();
+
+mxc_failed:
+	if (mxc_ipport)
+		freeMXCVPUUDPHandler();
 
 rtp_failed:
 	if (ipport)

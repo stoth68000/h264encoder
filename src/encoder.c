@@ -43,6 +43,7 @@
 #include "encoder.h"
 #include "es2ts.h"
 #include "rtp.h"
+#include "mxcvpuudp.h"
 #include "csc.h"
 #include "va_display.h"
 #include "encoder-display.h"
@@ -1838,6 +1839,9 @@ static int save_codeddata(unsigned long long display_order,
 
 		/* ... will drop the packet if RTP was not requested */
 		sendRTPPacket(buf_list->buf, buf_list->size);
+
+		/* ... will drop the packet if MXC_VPU_UDP was not requested */
+		sendMXCVPUUDPPacket(buf_list->buf, buf_list->size);
 
 		buf_list = (VACodedBufferSegment *) buf_list->next;
 		frame_size += coded_size;
