@@ -98,6 +98,7 @@ int sendMXCVPUUDPPacket(unsigned char *nal, int len)
 	if (!buf)
 		return -1;
 
+	/* Roll the seq no for every major nal, don't roll it when we fragment */
 	pkt_header.seqno = seqno++;
 	pkt_header.iframe = 0;
 	pkt_header.len = len;
@@ -110,10 +111,42 @@ int sendMXCVPUUDPPacket(unsigned char *nal, int len)
 		nethdr_to_be((struct nethdr *)buf);
 	memcpy(buf + sizeof(pkt_header), nal, len);
 
+#if 1
+	int netlen = 24 * 1024;
+	unsigned char *p = buf + sizeof(pkt_header);
+	for (int i = 0; i < len; i += netlen) {
+
+		int sl;
+		if ((i + netlen) < len)
+			sl = netlen;
+		else
+			sl = len - i;
+
+		pkt_header.len = sl;
+		memcpy(buf, &pkt_header, sizeof(pkt_header));
+		if (be_mode)
+			nethdr_to_be((struct nethdr *)buf);
+
+		/* Send the nal header */
+		int ret = sendto(skt, buf, sizeof(pkt_header), 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
+		if (ret < 0) {
+			fprintf(stderr, "Sending %d byte header message error, %s\n", sendlen, strerror(errno));
+		}
+
+		/* Send the nal data fragment */
+		ret = sendto(skt, p, sl, 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
+		if (ret < 0) {
+			fprintf(stderr, "Sending %d byte datagram message error, %s\n", sl, strerror(errno));
+		}
+
+		p += sl;
+	}
+#else
 	int ret = sendto(skt, buf, sendlen, 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
 	if (ret < 0) {
 		fprintf(stderr, "Sending %d byte datagram message error, %s\n", sendlen, strerror(errno));
 	}
+#endif
 	free(buf);
 
 	return 0;
