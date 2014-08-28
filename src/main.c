@@ -406,7 +406,7 @@ int main(int argc, char **argv)
 		goto encoder_failed;
 	}
 
-	printf("%s Capture: %dx%d %d/%d [osd: %s] [mxc_streaming: %s\\n",
+	printf("%s Capture: %dx%d %d/%d [osd: %s] [mxc_streaming: %s]\n",
 		source->name,
 		encoder_params.width,
 		encoder_params.height,
