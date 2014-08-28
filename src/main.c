@@ -54,6 +54,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --mxc_ipport=9999         Freescale MXC_CPU_TEST UDP port\n"
 		"    --mxc_endian <0,1>        0 = little, 1 = big [def: 1]\n"
 		"    --mxc_validate <file>     Scan file and check for any basic header errors\n"
+		"    --mxc_sendmode <1,2,3>    1=single xfer, 2=multihdr-multifrag, 3=singlehdr-multifrag [def: 1]\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
 		"    --packet-size=XXX         Use an alternate packet size\n"
 		"    --ifd=N                   Specify an interframe delay in microseconds\n"
@@ -132,6 +133,7 @@ static const struct option long_options[] = {
 	{ "mxc_ipport", required_argument, NULL, 16 },
 	{ "mxc_endian", required_argument, NULL, 17 },
 	{ "mxc_validate", required_argument, NULL, 18 },
+	{ "mxc_sendmode", required_argument, NULL, 19 },
 
 	{ 0, 0, 0, 0}
 };
@@ -153,7 +155,7 @@ int main(int argc, char **argv)
 	int V4LNumerator = 0;
 	char *mxc_ipaddress = "192.168.0.67";
 	char *mxc_validate_filename = 0;
-	int mxc_ipport = 0, mxc_endian = 1;
+	int mxc_ipport = 0, mxc_endian = 1, mxc_sendmode = 1;
 
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
@@ -315,6 +317,13 @@ int main(int argc, char **argv)
 		case 18:
 			mxc_validate_filename = optarg;
 			break;
+		case 19:
+			mxc_sendmode = atoi(optarg);
+			if (mxc_sendmode < 0)
+				mxc_sendmode = 1;
+			else if (mxc_sendmode > 3)
+				mxc_sendmode = 3;
+			break;
 		case 'W':
 			width = atoi(optarg);
 			break;
@@ -425,7 +434,7 @@ int main(int argc, char **argv)
 #endif
 
 	/* Open the 'nals via freescale UDP proprietary' mechanism if requested */
-	if (mxc_ipport && (initMXCVPUUDPHandler(mxc_ipaddress, mxc_ipport, 4 * 1048576, mxc_endian) < 0)) {
+	if (mxc_ipport && (initMXCVPUUDPHandler(mxc_ipaddress, mxc_ipport, 4 * 1048576, mxc_endian, mxc_sendmode) < 0)) {
 		printf("Error: MXCVPUUDP init failed\n");
 		goto rtp_failed;
 	}
