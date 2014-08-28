@@ -118,3 +118,60 @@ int sendMXCVPUUDPPacket(unsigned char *nal, int len)
 
 	return 0;
 }
+
+int validateMXCVPUUDPOutput(char *filename, int big_endian)
+{
+	int isok = 1;
+	int old_seqno;
+	pkt_header.seqno = -1;
+
+	if (!filename)
+		return -1;
+
+	be_mode = big_endian & 1;
+	FILE *fh = fopen(filename, "rb");
+
+	while (!feof(fh)) {
+		old_seqno = pkt_header.seqno;
+		int l = fread(&pkt_header, sizeof(pkt_header), 1, fh);
+		if (feof(fh))
+			break;
+
+		if (l != 1) {
+			isok = 0;
+			break;
+		}
+
+		if (be_mode)
+			nethdr_to_be(&pkt_header);
+
+		printf("seq:%08d iframe:%1d len:%08d[0x%08x] ...\n",
+			pkt_header.seqno, 
+			pkt_header.iframe, 
+			pkt_header.len, pkt_header.len);
+
+		if (old_seqno + 1 != pkt_header.seqno) {
+			printf("Illegal sequence number\n");
+			isok = 0;
+			break;
+		}
+
+		unsigned char *buf = malloc(pkt_header.len);
+		if (!buf) {	
+			isok = 0;
+			break;
+		}
+		l = fread(buf, 1, pkt_header.len, fh); 
+		if (feof(fh))
+			break;
+		if (l != pkt_header.len) {
+			isok = 0;
+			break;
+		}
+
+		free(buf);
+	}
+
+	return isok;
+}
+

@@ -53,6 +53,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --mxc_ipaddress=a.b.c.d   Freescale MXC_VPU_TEST UDP IP address\n"
 		"    --mxc_ipport=9999         Freescale MXC_CPU_TEST UDP port\n"
 		"    --mxc_endian <0,1>        0 = little, 1 = big [def: 1]\n"
+		"    --mxc_validate <file>     Scan file and check for any basic header errors\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
 		"    --packet-size=XXX         Use an alternate packet size\n"
 		"    --ifd=N                   Specify an interframe delay in microseconds\n"
@@ -130,6 +131,7 @@ static const struct option long_options[] = {
 	{ "mxc_ipaddress", required_argument, NULL, 15 },
 	{ "mxc_ipport", required_argument, NULL, 16 },
 	{ "mxc_endian", required_argument, NULL, 17 },
+	{ "mxc_validate", required_argument, NULL, 18 },
 
 	{ 0, 0, 0, 0}
 };
@@ -150,6 +152,7 @@ int main(int argc, char **argv)
 	int V4LFrameRate = 0;
 	int V4LNumerator = 0;
 	char *mxc_ipaddress = "192.168.0.67";
+	char *mxc_validate_filename = 0;
 	int mxc_ipport = 0, mxc_endian = 1;
 
 	enum payloadMode_e {
@@ -309,6 +312,9 @@ int main(int argc, char **argv)
 		case 17:
 			mxc_endian = atoi(optarg) & 1;
 			break;
+		case 18:
+			mxc_validate_filename = optarg;
+			break;
 		case 'W':
 			width = atoi(optarg);
 			break;
@@ -323,6 +329,18 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	/* Utility function, varify a file looks like valid MXC VPU test data */
+	if (mxc_validate_filename) {
+		if (validateMXCVPUUDPOutput(mxc_validate_filename, mxc_endian) < 0) {
+			fprintf(stderr, "file:%s is invalid or contains illegal content\n",
+				mxc_validate_filename);
+			return -1;
+		}
+		fprintf(stderr, "file:%s is valid\n", mxc_validate_filename);
+		return 0;
+	}
+
 	printf("RTP Payload: ");
 	if (payloadMode == 0)
 		printf("TS\n");
