@@ -425,7 +425,7 @@ int main(int argc, char **argv)
 #endif
 
 	/* Open the 'nals via freescale UDP proprietary' mechanism if requested */
-	if (mxc_ipport && (initMXCVPUUDPHandler(mxc_ipaddress, mxc_ipport, 1048576, mxc_endian) < 0)) {
+	if (mxc_ipport && (initMXCVPUUDPHandler(mxc_ipaddress, mxc_ipport, 4 * 1048576, mxc_endian) < 0)) {
 		printf("Error: MXCVPUUDP init failed\n");
 		goto rtp_failed;
 	}
