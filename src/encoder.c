@@ -2335,7 +2335,7 @@ static void encoder_set_defaults(struct encoder_params_s *p)
 	p->h264_entropy_mode = 1;
 	p->rc_mode = VA_RC_VBR;
 	p->frame_bitrate = 3000000;
-	p->hrd_bitrate_multiplier = 4;
+	p->hrd_bitrate_multiplier = 16;
 	p->input_fourcc = E_FOURCC_UNDEFINED;
 }
 
