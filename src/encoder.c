@@ -1726,8 +1726,8 @@ static int render_hrd(struct encoder_params_s *params)
 
 	if (params->frame_bitrate > 0) {
 		/* Struct expects bps */
-		misc_hrd_param->initial_buffer_fullness = params->frame_bitrate * 4;
-		misc_hrd_param->buffer_size = params->frame_bitrate * 8;
+		misc_hrd_param->initial_buffer_fullness = params->frame_bitrate * params->hrd_bitrate_multiplier;
+		misc_hrd_param->buffer_size = params->frame_bitrate * params->hrd_bitrate_multiplier * 2;
 	} else {
 		misc_hrd_param->initial_buffer_fullness = 0;
 		misc_hrd_param->buffer_size = 0;
@@ -2212,6 +2212,7 @@ static int print_input(struct encoder_params_s *params)
 	printf("INPUT: Min QP       : %d\n", minimal_qp);
 	printf("INPUT: Level IDC    : %d\n", params->level_idc);
 	printf("INPUT: Coded Clip   : %s\n", encoder_nalOutputFilename ? encoder_nalOutputFilename : "N/A");
+	printf("INPUT: HRD BR/Multi : %d\n", params->hrd_bitrate_multiplier);
 	printf("\n\n");		/* return back to startpoint */
 
 	return 0;
@@ -2334,6 +2335,7 @@ static void encoder_set_defaults(struct encoder_params_s *p)
 	p->h264_entropy_mode = 1;
 	p->rc_mode = VA_RC_VBR;
 	p->frame_bitrate = 3000000;
+	p->hrd_bitrate_multiplier = 4;
 	p->input_fourcc = E_FOURCC_UNDEFINED;
 }
 

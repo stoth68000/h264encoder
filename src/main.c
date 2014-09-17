@@ -78,7 +78,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --entropy <0|1>, 1 means cabac, 0 cavlc [def: %d]\n"
 		"    --profile <BP|CBP|MP|HP>  [def: %s]\n"
 		"    --payloadmode <0|1>, 0 means RTP/TS, 1 RTP/ES [def: 0]\n"
-		"    --level_idc <number>      [def: %d]\n",
+		"    --level_idc <number>      [def: %d]\n"
+		"    --hrd_bitrate_multiplier <number> [def: %d]\n",
 			p.initial_qp,
 			p.minimal_qp,
 			p.intra_period,
@@ -87,7 +88,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 			encoder_rc_to_string(p.rc_mode),
 			p.h264_entropy_mode,
 			encoder_profile_to_string(p.h264_profile),
-			p.level_idc
+			p.level_idc,
+			p.hrd_bitrate_multiplier
 	       );
 }
 
@@ -134,6 +136,7 @@ static const struct option long_options[] = {
 	{ "mxc_endian", required_argument, NULL, 17 },
 	{ "mxc_validate", required_argument, NULL, 18 },
 	{ "mxc_sendmode", required_argument, NULL, 19 },
+	{ "hrd_bitrate_multiplier", required_argument, NULL, 20 },
 
 	{ 0, 0, 0, 0}
 };
@@ -323,6 +326,9 @@ int main(int argc, char **argv)
 				mxc_sendmode = 1;
 			else if (mxc_sendmode > 3)
 				mxc_sendmode = 3;
+			break;
+		case 20:
+			encoder_params.hrd_bitrate_multiplier = atoi(optarg);
 			break;
 		case 'W':
 			width = atoi(optarg);

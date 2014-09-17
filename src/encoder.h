@@ -46,6 +46,8 @@ struct encoder_params_s
 
 	unsigned int frame_bitrate; /* bps */
 	enum fourcc_e input_fourcc;
+
+	unsigned int hrd_bitrate_multiplier;
 };
 
 extern FILE *csv_fp;
