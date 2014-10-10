@@ -24,7 +24,7 @@ struct nethdr {
 	int seqno;
 	int iframe;
 	int len;
-};
+} __attribute__ ((__packed__));
 
 static struct nethdr pkt_header;
 
