@@ -103,7 +103,7 @@ static int sendMXCVPUUDPPacket_1(unsigned char *nal, int len)
 
 	/* Roll the seq no for every major nal, don't roll it when we fragment */
 	pkt_header.seqno = seqno++;
-	pkt_header.iframe = 0;
+	pkt_header.iframe = 1;
 	pkt_header.len = len;
 
 	/* Construct a proprietary network frame, in whichever
