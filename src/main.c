@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 	int V4LNumerator = 0;
 	char *mxc_ipaddress = "192.168.0.67";
 	char *mxc_validate_filename = 0;
-	int mxc_ipport = 0, mxc_endian = 1, mxc_sendmode = 1;
+	int mxc_ipport = 0, mxc_endian = 0, mxc_sendmode = 1;
 
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
