@@ -15,6 +15,7 @@ static struct sockaddr_in udpsock;
 static unsigned int seqno = 0;
 static int be_mode = 0;
 static int send_mode = 2;
+static int interframe_delay = 0;
 
 /* Freeslace - custom header, taken from mxc_vpu_test/utils.c */
 /* No concept of endian, no concept of the size of an int.
@@ -103,13 +104,14 @@ void freeMXCVPUUDPHandler()
 	}
 }
 
-int initMXCVPUUDPHandler(char *ipaddress, int port, int sendsize, int big_endian, int mode)
+int initMXCVPUUDPHandler(char *ipaddress, int port, int sendsize, int ifd, int big_endian, int mode)
 {
-	if (!ipaddress || (port < 1024 || (port > 65535)))
+	if (!ipaddress || (port < 1024 || (port > 65535) || (ifd < 0)))
 		return -1;
 
 	be_mode = big_endian & 1;
 	send_mode = mode;
+	interframe_delay = ifd; /* microsecond delay between mode 2 frame transmits */
 
 	skt = socket(AF_INET, SOCK_DGRAM, 0);
 	if (skt < 0) {
@@ -163,6 +165,7 @@ static int sendMXCVPUUDPPacket_2(unsigned char *nal, int len, int frame_type)
 	 * Must be less than 64KB else Linux refuses to send it.
 	 */
 	int fraglen = (32 * 1024);
+	fraglen = 1300;
 
 	/* The encoder will feed us regardless, just OK
 	 * the transaction if we're not enabled.
@@ -183,7 +186,7 @@ static int sendMXCVPUUDPPacket_2(unsigned char *nal, int len, int frame_type)
 	/* One header per fragment */
 	unsigned char *p = buf + sizeof(pkt_header2);
 	for (int i = 0; i < len; i += fraglen) {
-	
+
 		if ((i + fraglen) < len) {
 			pkt_header2.frag_len = fraglen;
 		} else {
@@ -213,6 +216,9 @@ static int sendMXCVPUUDPPacket_2(unsigned char *nal, int len, int frame_type)
 		if (ret < 0)
 			fprintf(stderr, "Sending %d byte hdr msg err, %s\n", l,
 				strerror(errno));
+
+		if (interframe_delay)
+			usleep(interframe_delay);
 
 		p += pkt_header2.frag_len;
 		pkt_header2.frag_no++;
