@@ -104,7 +104,7 @@ void freeMXCVPUUDPHandler()
 	}
 }
 
-int initMXCVPUUDPHandler(char *ipaddress, int port, int sendsize, int ifd, int big_endian, int mode)
+int initMXCVPUUDPHandler(char *ipaddress, int port, int dscp, int sendsize, int ifd, int big_endian, int mode)
 {
 	if (!ipaddress || (port < 1024 || (port > 65535) || (ifd < 0)))
 		return -1;
@@ -136,6 +136,18 @@ int initMXCVPUUDPHandler(char *ipaddress, int port, int sendsize, int ifd, int b
 		close(skt);
 		return -1;
         }
+
+	if (dscp >= 0) {
+		/* Apprently we shift this two places, see vincents ffmpeg patch, validated by
+		 * other posts on the web also.
+		 */
+		dscp <<= 2;
+		if (setsockopt(skt, IPPROTO_IP, IP_TOS, &dscp, sizeof(dscp)) != 0) {
+			fprintf(stderr, "Setting dscp, %s\n", strerror(errno));
+			close(skt);
+			return -1;
+		}
+	}
 
 	printf("%s() configured for use.\n", __func__);
 	memset(&pkt_header, 0, sizeof(pkt_header));
