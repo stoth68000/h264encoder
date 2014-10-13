@@ -57,6 +57,7 @@ struct nethdr2 {
 	unsigned short frag_len;
 } __attribute__ ((__packed__));
 
+#if 0
 static void dump_nethdr2(struct nethdr2 *h)
 {
 	printf("seqno: %08x len: %08x fragno: %04x len: %08x flags=%x\n",
@@ -64,6 +65,7 @@ static void dump_nethdr2(struct nethdr2 *h)
 		h->frag_no, h->frag_len,
 		h->flags);
 }
+#endif
 
 static struct nethdr pkt_header;
 static struct nethdr2 pkt_header2;
@@ -199,7 +201,7 @@ static int sendMXCVPUUDPPacket_2(unsigned char *nal, int len, int frame_type)
 		/* Take a fragment slice */
 		memcpy(buf + sizeof(pkt_header2), nal + i, pkt_header2.frag_len);
 
-		dump_nethdr2(&pkt_header2);
+		//dump_nethdr2(&pkt_header2);
 
 		/* Prep endianness prior to xmit */
 		if (be_mode)
