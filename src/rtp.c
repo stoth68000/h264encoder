@@ -76,7 +76,7 @@ int initRTPHandler(char *ipaddress, int port, int dscp, int pktsize, int ifd, in
 	return 0;
 }
 
-int sendRTPPacket(unsigned char *nal, int len)
+int sendRTPPacket(unsigned char *nal, int len, int isIFrame)
 {
 	if (av_ctx == NULL)
 		return 0;

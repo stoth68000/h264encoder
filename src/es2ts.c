@@ -72,7 +72,7 @@ static int es2ts_initRTPHandler(char *ipaddress, int port, int dscp, int pktsize
 	return 0;
 }
 
-static int es2ts_sendTSBufferAsRTP(unsigned char *tsbuf, int len)
+static int es2ts_sendTSBufferAsRTP(unsigned char *tsbuf, int len, int isIFrame)
 {
 	if (tsav_ctx == NULL)
 		return 0;
@@ -138,7 +138,8 @@ int downstream_callback(struct es2ts_context_s *ctx, unsigned char *buf, int len
 	fwrite(buf, 1, len, fh);
 #endif
 
-	es2ts_sendTSBufferAsRTP(buf, len);
+	/* We don't know if its an iframe, assume no in the following arg */
+	es2ts_sendTSBufferAsRTP(buf, len, 0);
 
 	return ES2TS_OK;
 }

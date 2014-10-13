@@ -3,6 +3,6 @@
 
 void freeMXCVPUUDPHandler();
 int  initMXCVPUUDPHandler(char *ipaddress, int port, int sendsize, int bigendian, int send_mode);
-int  sendMXCVPUUDPPacket(unsigned char *nal, int len);
+int  sendMXCVPUUDPPacket(unsigned char *nal, int len, int frame_type);
 
 int  validateMXCVPUUDPOutput(char *filename, int bigendian);

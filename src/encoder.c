@@ -168,6 +168,7 @@ struct storage_task_t {
 	void *next;
 	unsigned long long display_order;
 	unsigned long long encode_order;
+	int frame_type;
 };
 static struct storage_task_t *storage_task_header = NULL, *storage_task_tail = NULL;
 
@@ -1811,7 +1812,7 @@ static int render_slice(void)
 }
 
 static int save_codeddata(unsigned long long display_order,
-			  unsigned long long encode_order)
+			  unsigned long long encode_order, int frame_type)
 {
 	static unsigned long frame_number = 0;
 	static struct timeval frame_time[2] = { { 0, 0 }, { 0, 0 } };
@@ -1831,14 +1832,17 @@ static int save_codeddata(unsigned long long display_order,
 		else
 			coded_size = buf_list->size;
 
+/* TODO: Urgh, hardcoded list of callbacks. Put them in a list
+ * and enumerate and call.
+ */
 		/* ... will drop the packet if ES2TS was not requested */
-		sendESPacket(buf_list->buf, buf_list->size);
+		sendESPacket(buf_list->buf, buf_list->size, frame_type);
 
 		/* ... will drop the packet if RTP was not requested */
-		sendRTPPacket(buf_list->buf, buf_list->size);
+		sendRTPPacket(buf_list->buf, buf_list->size, frame_type);
 
 		/* ... will drop the packet if MXC_VPU_UDP was not requested */
-		sendMXCVPUUDPPacket(buf_list->buf, buf_list->size);
+		sendMXCVPUUDPPacket(buf_list->buf, buf_list->size, frame_type);
 
 		buf_list = (VACodedBufferSegment *) buf_list->next;
 		frame_size += coded_size;
@@ -1905,13 +1909,14 @@ static struct storage_task_t *storage_task_dequeue(void)
 }
 
 static int storage_task_queue(unsigned long long display_order,
-			      unsigned long long encode_order)
+			      unsigned long long encode_order, int frame_type)
 {
 	struct storage_task_t *tmp;
 
 	tmp = calloc(1, sizeof(struct storage_task_t));
 	tmp->display_order = display_order;
 	tmp->encode_order = encode_order;
+	tmp->frame_type = frame_type;
 
 	pthread_mutex_lock(&encode_mutex);
 
@@ -1932,13 +1937,13 @@ static int storage_task_queue(unsigned long long display_order,
 }
 
 static void storage_task(unsigned long long display_order,
-			 unsigned long long encode_order)
+			 unsigned long long encode_order, int frame_type)
 {
 	VAStatus va_status;
 
 	va_status = vaSyncSurface(va_dpy, src_surface[display_order % SURFACE_NUM]);
 	CHECK_VASTATUS(va_status, "vaSyncSurface");
-	save_codeddata(display_order, encode_order);
+	save_codeddata(display_order, encode_order, frame_type);
 
 	/* reload a new frame data */
 
@@ -1963,7 +1968,8 @@ static void *storage_task_thread(void *t)
 			continue;
 		}
 
-		storage_task(current->display_order, current->encode_order);
+		storage_task(current->display_order, current->encode_order,
+			current->frame_type);
 
 		free(current);
 	}
@@ -2152,11 +2158,11 @@ static int encode_frame(struct encoder_params_s *params, unsigned char *frame)
 	CHECK_VASTATUS(va_status, "vaEndPicture");
 
 	if (encode_syncmode) {
-		storage_task(current_frame_display, current_frame_encoding);
+		storage_task(current_frame_display, current_frame_encoding, current_frame_type);
 	} else {
 		/* queue the storage task queue */
 		storage_task_queue(current_frame_display,
-				   current_frame_encoding);
+				   current_frame_encoding, current_frame_type);
 	}
 
 	update_ReferenceFrames();
