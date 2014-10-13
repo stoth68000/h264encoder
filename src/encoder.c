@@ -48,6 +48,7 @@
 #include "va_display.h"
 #include "encoder-display.h"
 #include "main.h"
+#include "frames.h"
 
 extern char *encoder_nalOutputFilename;
 
@@ -572,10 +573,6 @@ static int build_packed_sei_buffer_timing(unsigned int init_cpb_removal_length,
  * displaying_order: displaying order
  * frame_type: frame type 
  */
-#define FRAME_P 0
-#define FRAME_B 1
-#define FRAME_I 2
-#define FRAME_IDR 7
 void encoding2display_order(unsigned long long encoding_order, int intra_period,
 			    int intra_idr_period, int ip_period,
 			    unsigned long long *displaying_order,
