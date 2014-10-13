@@ -55,7 +55,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --mxc_endian <0,1>        0 = little, 1 = big [def: 1]\n"
 		"    --mxc_validate <file>     Scan file and check for any basic header errors\n"
 		"    --mxc_sendmode <1,2>      1=single xfer, 2=large-iframe [def: 2]\n"
-		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
+		"    --dscp=XXX                DSCP class to use 1-63 (for example 26 for AF31)\n"
 		"    --packet-size=XXX         Use an alternate packet size\n"
 		"    --ifd=N                   Specify an interframe delay in microseconds\n"
 		"-f, --v4lframerate=FPS        Framerate [no limit]\n"
@@ -292,6 +292,10 @@ int main(int argc, char **argv)
 			break;
 		case 9:
 			dscp = atoi(optarg);
+			if ((dscp < 0) || (dscp > 63)) {
+				usage(encoder, argc, argv);
+				exit(1);
+			}
 			break;
 		case 10:
 			pktsize = atoi(optarg);
