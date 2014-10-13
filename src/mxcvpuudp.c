@@ -14,7 +14,7 @@ static int skt = -1;
 static struct sockaddr_in udpsock;
 static unsigned int seqno = 0;
 static int be_mode = 0;
-static int send_mode = 1;
+static int send_mode = 2;
 
 /* Freeslace - custom header, taken from mxc_vpu_test/utils.c */
 /* No concept of endian, no concept of the size of an int.
@@ -155,11 +155,8 @@ static unsigned char encoderFrameTypeToNetwork(int type)
 /* Send a full nal, spread across multiple packets as necessary, each with their
  * own header.
  */
-static int sendMXCVPUUDPPacket_4(unsigned char *nal, int len, int frame_type)
+static int sendMXCVPUUDPPacket_2(unsigned char *nal, int len, int frame_type)
 {
-//	if (len > 0x48000)
-		printf("%s(%d) %d\n", __func__, len, frame_type);
-
 	/* Maximum size + header of a single UDP transmit that we'll support.
 	 * Must be less than 64KB else Linux refuses to send it.
 	 */
@@ -260,135 +257,12 @@ static int sendMXCVPUUDPPacket_1(unsigned char *nal, int len, int isIFrame)
 	return 0;
 }
 
-/* Send nal fragments with each fragment having a header */
-static int sendMXCVPUUDPPacket_2(unsigned char *nal, int len, int isIFrame)
-{
-	/* The encoder will feed us regardless, just OK
-	 * the transaction if we're not enabled.
-	 */
-	if (skt == -1)
-		return 0;
-
-	int sendlen = len + sizeof(pkt_header);
-	unsigned char *buf = malloc(sendlen);
-	if (!buf)
-		return -1;
-
-	/* Roll the seq no for every major nal, don't roll it when we fragment */
-	pkt_header.seqno = seqno++;
-	pkt_header.iframe = 0;
-	pkt_header.len = len;
-
-	/* Construct a proprietary network frame, in whichever
-	 * format freescale prefers, big or little endian.
-	 */
-	memcpy(buf, &pkt_header, sizeof(pkt_header));
-	if (be_mode)
-		nethdr_to_be((struct nethdr *)buf);
-	memcpy(buf + sizeof(pkt_header), nal, len);
-
-	/* One header per fragment */
-	int netlen = 24 * 1024;
-	unsigned char *p = buf + sizeof(pkt_header);
-	for (int i = 0; i < len; i += netlen) {
-
-		int sl;
-		if ((i + netlen) < len)
-			sl = netlen;
-		else
-			sl = len - i;
-
-		pkt_header.len = sl;
-		memcpy(buf, &pkt_header, sizeof(pkt_header));
-		if (be_mode)
-			nethdr_to_be((struct nethdr *)buf);
-
-		/* Send the nal header */
-		int ret = sendto(skt, buf, sizeof(pkt_header), 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
-		if (ret < 0) {
-			fprintf(stderr, "Sending %d byte header message error, %s\n", sendlen, strerror(errno));
-		}
-
-		/* Send the nal data fragment */
-		ret = sendto(skt, p, sl, 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
-		if (ret < 0) {
-			fprintf(stderr, "Sending %d byte datagram message error, %s\n", sl, strerror(errno));
-		}
-
-		p += sl;
-	}
-	free(buf);
-
-	return 0;
-}
-
-/* Send a single header then lots of nal fragments without a header */
-static int sendMXCVPUUDPPacket_3(unsigned char *nal, int len, int isIFrame)
-{
-	/* The encoder will feed us regardless, just OK
-	 * the transaction if we're not enabled.
-	 */
-	if (skt == -1)
-		return 0;
-
-	int sendlen = len + sizeof(pkt_header);
-	unsigned char *buf = malloc(sendlen);
-	if (!buf)
-		return -1;
-
-	/* Roll the seq no for every major nal, don't roll it when we fragment */
-	pkt_header.seqno = seqno++;
-	pkt_header.iframe = 0;
-	pkt_header.len = len;
-
-	/* Construct a proprietary network frame, in whichever
-	 * format freescale prefers, big or little endian.
-	 */
-	memcpy(buf, &pkt_header, sizeof(pkt_header));
-	if (be_mode)
-		nethdr_to_be((struct nethdr *)buf);
-	memcpy(buf + sizeof(pkt_header), nal, len);
-
-	/* single header, multi-fragment */
-	/* Send the nal header */
-	int ret = sendto(skt, buf, sizeof(pkt_header), 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
-	if (ret < 0) {
-		fprintf(stderr, "Sending %d byte header message error, %s\n", sendlen, strerror(errno));
-	}
-
-	int netlen = 24 * 1024;
-	unsigned char *p = buf + sizeof(pkt_header);
-	for (int i = 0; i < len; i += netlen) {
-
-		int sl;
-		if ((i + netlen) < len)
-			sl = netlen;
-		else
-			sl = len - i;
-
-		/* Send the nal data fragment */
-		ret = sendto(skt, p, sl, 0, (struct sockaddr*)&udpsock, sizeof(udpsock));
-		if (ret < 0) {
-			fprintf(stderr, "Sending %d byte datagram message error, %s\n", sl, strerror(errno));
-		}
-
-		p += sl;
-	}
-	free(buf);
-
-	return 0;
-}
-
-int sendMXCVPUUDPPacket(unsigned char *nal, int len, int isIFrame)
+int sendMXCVPUUDPPacket(unsigned char *nal, int len, int frame_type)
 {
 	if (send_mode == 1)
-		return sendMXCVPUUDPPacket_1(nal, len, isIFrame);
+		return sendMXCVPUUDPPacket_1(nal, len, frame_type);
 	if (send_mode == 2)
-		return sendMXCVPUUDPPacket_2(nal, len, isIFrame);
-	if (send_mode == 3)
-		return sendMXCVPUUDPPacket_3(nal, len, isIFrame);
-	if (send_mode == 4)
-		return sendMXCVPUUDPPacket_4(nal, len, isIFrame);
+		return sendMXCVPUUDPPacket_2(nal, len, frame_type);
 
 	return 0;
 }

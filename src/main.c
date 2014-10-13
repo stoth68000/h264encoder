@@ -54,7 +54,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --mxc_ipport=9999         Freescale MXC_CPU_TEST UDP port\n"
 		"    --mxc_endian <0,1>        0 = little, 1 = big [def: 1]\n"
 		"    --mxc_validate <file>     Scan file and check for any basic header errors\n"
-		"    --mxc_sendmode <1,2,3,4>  1=single xfer, 2=multihdr-multifrag, 3=singlehdr-multifrag, 4=large-iframe [def: 4]\n"
+		"    --mxc_sendmode <1,2>      1=single xfer, 2=large-iframe [def: 2]\n"
 		"    --dscp=XXX                DSCP class to use (for example 26 for AF31)\n"
 		"    --packet-size=XXX         Use an alternate packet size\n"
 		"    --ifd=N                   Specify an interframe delay in microseconds\n"
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 	int V4LNumerator = 0;
 	char *mxc_ipaddress = "192.168.0.67";
 	char *mxc_validate_filename = 0;
-	int mxc_ipport = 0, mxc_endian = 0, mxc_sendmode = 4;
+	int mxc_ipport = 0, mxc_endian = 0, mxc_sendmode = 2;
 
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
@@ -324,8 +324,8 @@ int main(int argc, char **argv)
 			mxc_sendmode = atoi(optarg);
 			if (mxc_sendmode < 0)
 				mxc_sendmode = 1;
-			else if (mxc_sendmode > 4)
-				mxc_sendmode = 4;
+			else if (mxc_sendmode > 2)
+				mxc_sendmode = 2;
 			break;
 		case 20:
 			encoder_params.hrd_bitrate_multiplier = atoi(optarg);
