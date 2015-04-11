@@ -2405,10 +2405,10 @@ struct encoder_operations_s vaapi_ops =
 {
 	.type		= EM_VAAPI,
         .name		= "Intel VAAPI Encoder",
-        .init		= encoder_init,
-        .set_defaults	= encoder_set_defaults,
-        .close		= encoder_close,
-        .encode_frame	= encoder_encode_frame,
+        .init		= vaapi_init,
+        .set_defaults	= vaapi_set_defaults,
+        .close		= vaapi_close,
+        .encode_frame	= vaapi_encode_frame,
 };
 
 static struct encoder_module_s {
