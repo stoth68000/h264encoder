@@ -2069,7 +2069,7 @@ static void upload_yuv_to_surface(unsigned char *inbuf, VASurfaceID surface_id,
 	CHECK_VASTATUS(va_status, "vaDestroyImage");
 }
 
-static int encode_frame(struct encoder_params_s *params, unsigned char *frame)
+static int vaapi_encode_frame_helper(struct encoder_params_s *params, unsigned char *frame)
 {
 	unsigned int i;
 	VAStatus va_status;
@@ -2221,7 +2221,7 @@ static int print_input(struct encoder_params_s *params)
 	return 0;
 }
 
-static int encoder_init(struct encoder_params_s *params)
+static int vaapi_init(struct encoder_params_s *params)
 {
 	assert(params);
 	printf("%s(%d, %d)\n", __func__, params->width, params->height);
@@ -2309,7 +2309,7 @@ static int encoder_init(struct encoder_params_s *params)
 	return 0;
 }
 
-static void encoder_close(struct encoder_params_s *params)
+static void vaapi_close(struct encoder_params_s *params)
 {
 	encode_thread_terminate = 1;
 	encode_thread_terminated = 0;
@@ -2323,7 +2323,7 @@ static void encoder_close(struct encoder_params_s *params)
 	deinit_va();
 }
 
-static void encoder_set_defaults(struct encoder_params_s *p)
+static void vaapi_set_defaults(struct encoder_params_s *p)
 {
 	memset(p, 0, sizeof(*p));
 	p->type = EM_VAAPI;
@@ -2342,7 +2342,7 @@ static void encoder_set_defaults(struct encoder_params_s *p)
 	p->input_fourcc = E_FOURCC_UNDEFINED;
 }
 
-static int encoder_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
+static int vaapi_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 {
 	if ((!params) || (!inbuf))
 		return 0;
@@ -2395,7 +2395,7 @@ static int encoder_encode_frame(struct encoder_params_s *params, unsigned char *
 		encoder_display_render_string(&display_ctx, (unsigned char*)str, strlen(str), 0, 11);
 	}
 
-	encode_frame(params, inbuf);
+	vaapi_encode_frame_helper(params, inbuf);
 
 	frames_processed++;
 	return 1;
