@@ -2,19 +2,43 @@
 #define ENCODER_H
 
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <assert.h>
+#include <pthread.h>
+#include <errno.h>
+#include <math.h>
+#include <time.h>
+
 #include <va/va.h>
 #include <va/va_drmcommon.h>
 #include <va/va_vpp.h>
 #include <va/va_enc_h264.h>
+#include <libavcodec/avcodec.h>
+#include <x264.h>
+#include <libyuv.h>
+
+#include "es2ts.h"
+#include "rtp.h"
+#include "mxcvpuudp.h"
+#include "csc.h"
+#include "va_display.h"
+#include "encoder-display.h"
+#include "main.h"
+#include "frames.h"
+
+#include "encoder-display.h"
+#include "frames.h"
 
 #define IS_YUY2(p) ((p)->input_fourcc == E_FOURCC_YUY2)
 #define IS_BGRX(p) ((p)->input_fourcc == E_FOURCC_BGRX)
-
-#define CHECK_VASTATUS(va_status,func)                                  \
-    if (va_status != VA_STATUS_SUCCESS) {                               \
-        fprintf(stderr,"%s:%s (%d) failed, exit %d\n", __func__, func, __LINE__, va_status); \
-        exit(1);                                                        \
-    }
 
 enum fourcc_e {
 	E_FOURCC_UNDEFINED = 0,
@@ -22,12 +46,36 @@ enum fourcc_e {
 	E_FOURCC_BGRX,
 };
 
+struct lavc_x264_params {
+	AVCodec *codec;
+	AVCodecContext *codec_ctx;
+	AVFrame *picture;
+	FILE *fh;
+};
+
+struct x264_vars_s {
+	x264_param_t x264_params;
+	x264_t *encoder;
+        x264_picture_t pic_in, pic_out;
+	x264_image_t *img;
+	unsigned long long nalcount, bytecount;
+};
+
+enum encoder_type_e {
+	EM_VAAPI = 0,
+	EM_AVCODEC_H264,
+	EM_X264,
+	EM_MAX
+};
+
 struct encoder_params_s
 {
-	enum {
-		EM_VAAPI = 0,
-		EM_MAX
-        } type;
+	enum encoder_type_e type;
+	struct encoder_display_context display_ctx;
+
+	/* Nals to disk */
+	char *encoder_nalOutputFilename;
+	FILE *nal_fp;
 
 	unsigned int width;
 	unsigned int height;
@@ -35,27 +83,37 @@ struct encoder_params_s
 	unsigned int deinterlacemode;
 	unsigned int initial_qp;
 	unsigned int minimal_qp;
+	unsigned int frame_rate;
 
 	unsigned int intra_period;
-	unsigned int idr_period;
+	unsigned int intra_idr_period;
 	unsigned int ip_period;
 	VAProfile h264_profile;
 	unsigned char level_idc;
 	unsigned int h264_entropy_mode;
 	int rc_mode;
+	unsigned int frame_count;
 
 	unsigned int frame_bitrate; /* bps */
 	enum fourcc_e input_fourcc;
 
 	unsigned int hrd_bitrate_multiplier;
+
+	/* libavcodec Specific */
+	struct lavc_x264_params lavc;
+
+	/* X264 ENCODER */
+	struct x264_vars_s x264_vars;
+
+	unsigned long long frames_processed;
+
+	FILE *csv_fp;
+	int quiet_encode;
 };
 
-extern FILE *csv_fp;
-extern int quiet_encode;
-
-int  encoder_string_to_rc(char *str);
+int   encoder_string_to_rc(char *str);
 char *encoder_rc_to_string(int rcmode);
-int  encoder_string_to_profile(char *str);
+int   encoder_string_to_profile(char *str);
 char *encoder_profile_to_string(int profile);
 
 struct encoder_operations_s
@@ -72,5 +130,10 @@ struct encoder_operations_s
 extern struct encoder_operations_s vaapi_ops;
 
 struct encoder_operations_s *getEncoderTarget(unsigned int type);
+
+void encoder_set_defaults(struct encoder_params_s *p);
+int encoder_print_input(struct encoder_params_s *p);
+int encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf, int size, int isIFrame);
+
 
 #endif

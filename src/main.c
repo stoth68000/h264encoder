@@ -65,7 +65,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"-W, --dev-width <number>      Device width [720]\n"
 		"-H, --dev-height <number>     Device height [480]\n"
 		"-M, --mode <number>           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k [def: 0]\n"
-		"-D, --vppdeinterlace <number> 0=off 1=motionadaptive 2=bob\n",
+		"-D, --vppdeinterlace <number> 0=off 1=motionadaptive 2=bob\n"
+		"    --compressor <number>     0=vaapi 1=libavcodec/x264 2=x264 [def: 0]\n",
 		p.frame_bitrate
 		);
 
@@ -83,7 +84,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 			p.initial_qp,
 			p.minimal_qp,
 			p.intra_period,
-			p.idr_period,
+			p.intra_idr_period,
 			p.ip_period,
 			encoder_rc_to_string(p.rc_mode),
 			p.h264_entropy_mode,
@@ -137,6 +138,7 @@ static const struct option long_options[] = {
 	{ "mxc_validate", required_argument, NULL, 18 },
 	{ "mxc_sendmode", required_argument, NULL, 19 },
 	{ "hrd_bitrate_multiplier", required_argument, NULL, 20 },
+	{ "compressor", required_argument, NULL, 21 },
 
 	{ 0, 0, 0, 0}
 };
@@ -159,6 +161,7 @@ int main(int argc, char **argv)
 	char *mxc_ipaddress = "192.168.0.67";
 	char *mxc_validate_filename = 0;
 	int mxc_ipport = 0, mxc_endian = 0, mxc_sendmode = 2;
+	enum encoder_type_e compressor = EM_VAAPI;
 
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
@@ -193,7 +196,7 @@ int main(int argc, char **argv)
 			es2ts_debug = 1;
 			break;
 		case 'q':
-			quiet_encode = 1;
+			encoder_params.quiet_encode = 1;
 			break;
 		case 'V':
 			fprintf(stderr, "%s\n", PACKAGE_STRING);
@@ -235,8 +238,8 @@ int main(int argc, char **argv)
 			encoder_nalOutputFilename = optarg;
 			break;
 		case 'O':
-			csv_fp = fopen(optarg, "w");
-			if (csv_fp == NULL) {
+			encoder_params.csv_fp = fopen(optarg, "w");
+			if (encoder_params.csv_fp == NULL) {
 				printf("Error: unable to open %s: %m\n", optarg);
 				exit(1);
 			}
@@ -245,7 +248,7 @@ int main(int argc, char **argv)
 			encoder_params.intra_period = atoi(optarg);
 			break;
 		case 2:
-			encoder_params.idr_period = atoi(optarg);
+			encoder_params.intra_idr_period = atoi(optarg);
 			break;
 		case 3:
 			encoder_params.ip_period = atoi(optarg);
@@ -333,6 +336,20 @@ int main(int argc, char **argv)
 			break;
 		case 20:
 			encoder_params.hrd_bitrate_multiplier = atoi(optarg);
+			break;
+		case 21:
+			compressor = (enum encoder_type_e)atoi(optarg);
+			if (compressor <= EM_VAAPI)
+				compressor = EM_VAAPI;
+			if (compressor > EM_MAX)
+				compressor = EM_MAX - 1;
+	
+			encoder = getEncoderTarget(compressor);
+			if (!encoder) {
+				printf("Invalid encoder target, no encoder selected\n");
+				exit(1);
+			}
+			encoder->set_defaults(&encoder_params);
 			break;
 		case 'W':
 			width = atoi(optarg);

@@ -6,6 +6,12 @@
 #include "csc.h"
 #include "encoder.h"
 
+#define CHECK_VASTATUS(va_status,func)                                  \
+    if (va_status != VA_STATUS_SUCCESS) {                               \
+        fprintf(stderr,"%s:%s (%d) failed, exit %d\n", __func__, func, __LINE__, va_status); \
+        exit(1);                                                        \
+    }
+
 VAStatus csc_convert_rgbdata_to_yuv(struct csc_ctx_s *ctx, unsigned char *data, VASurfaceID yuv_surface_output)
 {
 	VAProcPipelineParameterBuffer *pipeline_param;

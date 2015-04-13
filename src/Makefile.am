@@ -3,6 +3,7 @@ bin_PROGRAMS = h264encoder
 h264encoder_CFLAGS = \
 	-D_BSD_SOURCE -D_XOPEN_SOURCE \
 	-DHAVE_VA_DRM -DHAVE_VA_X11 \
+	-I/KL/libyuv-read-only/include \
 	@PTHREAD_CFLAGS@ \
 	@LIBVA_CFLAGS@ \
 	@LIBAV_CFLAGS@ \
@@ -10,7 +11,8 @@ h264encoder_CFLAGS = \
 	@LIBIPCVIDEO_CFLAGS@ \
 	@X11_CFLAGS@
 h264encoder_LDADD = \
-	-lm \
+	-lm -lx264 \
+	-L/KL/libyuv-read-only -lyuv \
 	@PTHREAD_LIBS@ \
 	@LIBVA_LIBS@ \
 	@LIBAV_LIBS@ \
@@ -18,6 +20,8 @@ h264encoder_LDADD = \
 	@LIBIPCVIDEO_LIBS@ \
 	@X11_LIBS@
 h264encoder_SOURCES = \
+	x264_encoder.c \
+	vaapi_encoder.c \
 	encoder.c \
 	encoder.h \
 	capture.c \
