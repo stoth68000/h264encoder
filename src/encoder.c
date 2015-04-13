@@ -1,13 +1,62 @@
-
 #include "encoder.h"
+
+void encoder_frame_add_osd(struct encoder_params_s *params, unsigned char *frame)
+{
+	if (IS_YUY2(params) && params->enable_osd) {
+		/* Warning: We're going to directly modify the input pixels. In fixed
+		 * frame encoding we'll continuiously overwrite and alter the static
+		 * image. If for any reason our OSD strings below begin to shorten,
+		 * we'll leave old pixel data in the source image.
+		 * This is intensional and saves an additional frame copy.
+		 */
+		encoder_display_render_reset(&params->display_ctx, frame, params->width * 2);
+
+		/* Render any OSD */
+		char str[256];
+		time_t now = time(NULL);
+		struct tm *tm = localtime(&now);
+		sprintf(str, "%04d/%02d/%02d-%02d:%02d:%02d",
+			tm->tm_year + 1900,
+			tm->tm_mon + 1,
+			tm->tm_mday,
+			tm->tm_hour,
+			tm->tm_min,
+			tm->tm_sec
+			);
+		encoder_display_render_string(&params->display_ctx, (unsigned char*)str, strlen(str), 0, 10);
+
+		sprintf(str, "FRM: %lld", params->frames_processed);
+		encoder_display_render_string(&params->display_ctx, (unsigned char*)str, strlen(str), 0, 11);
+	}
+}
+
+int encoder_frame_ingested(struct encoder_params_s *params)
+{
+	params->frames_processed++;
+	return 1;
+}
+
+int encoder_create_nal_outfile(struct encoder_params_s *params)
+{
+	/* store coded data into a file */
+	if (params->encoder_nalOutputFilename) {
+		params->nal_fp = fopen(params->encoder_nalOutputFilename, "w+");
+		if (params->nal_fp == NULL) {
+			printf("Open file %s failed, exit\n", params->encoder_nalOutputFilename);
+			exit(1);
+		}
+	}
+	return 0;
+}
 
 int encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf, int size, int isIFrame)
 {
 	unsigned int coded_size = 0;
 
-	if (params->nal_fp)
+	if (params->nal_fp) {
 		coded_size += fwrite(buf, 1, size, params->nal_fp);
-	else
+		fflush(params->nal_fp);
+	} else
 		coded_size = size;
 
 /* TODO: Urgh, hardcoded list of callbacks. Put them in a list
@@ -25,7 +74,7 @@ int encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf
 	return coded_size;
 }
 
-int encoder_print_input(struct encoder_params_s *params)
+void encoder_print_input(struct encoder_params_s *params)
 {
 	printf("\n\nINPUT:Try to encode H264...\n");
 	printf("INPUT: RateControl  : %s\n", encoder_rc_to_string(params->rc_mode));
@@ -33,18 +82,16 @@ int encoder_print_input(struct encoder_params_s *params)
 	       params->width, params->height, params->frame_count);
 	printf("INPUT: FrameRate    : %d\n", params->frame_rate);
 	printf("INPUT: Bitrate      : %d\n", params->frame_bitrate);
-//	printf("INPUT: Slices       : %d\n", frame_slices);
 	printf("INPUT: IntraPeriod  : %d\n", params->intra_period);
 	printf("INPUT: IDRPeriod    : %d\n", params->intra_idr_period);
 	printf("INPUT: IpPeriod     : %d\n", params->ip_period);
 	printf("INPUT: Initial QP   : %d\n", params->initial_qp);
 	printf("INPUT: Min QP       : %d\n", params->minimal_qp);
 	printf("INPUT: Level IDC    : %d\n", params->level_idc);
-	printf("INPUT: Coded Clip   : %s\n", params->encoder_nalOutputFilename ? params->encoder_nalOutputFilename : "N/A");
+	printf("INPUT: Coded Clip   : %s\n", params->encoder_nalOutputFilename ?
+		params->encoder_nalOutputFilename : "N/A");
 	printf("INPUT: HRD BR/Multi : %d\n", params->hrd_bitrate_multiplier);
 	printf("\n\n");		/* return back to startpoint */
-
-	return 0;
 }
 
 void encoder_set_defaults(struct encoder_params_s *p)

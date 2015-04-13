@@ -235,7 +235,7 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'o':
-			encoder_nalOutputFilename = optarg;
+			encoder_params.encoder_nalOutputFilename = optarg;
 			break;
 		case 'O':
 			encoder_params.csv_fp = fopen(optarg, "w");

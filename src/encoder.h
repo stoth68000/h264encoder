@@ -109,6 +109,9 @@ struct encoder_params_s
 
 	FILE *csv_fp;
 	int quiet_encode;
+
+	/* VAAPI Colorspace Conversion */
+	struct csc_ctx_s csc_ctx;
 };
 
 int   encoder_string_to_rc(char *str);
@@ -132,8 +135,10 @@ extern struct encoder_operations_s vaapi_ops;
 struct encoder_operations_s *getEncoderTarget(unsigned int type);
 
 void encoder_set_defaults(struct encoder_params_s *p);
-int encoder_print_input(struct encoder_params_s *p);
-int encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf, int size, int isIFrame);
-
+void encoder_print_input(struct encoder_params_s *p);
+int  encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf, int size, int isIFrame);
+int  encoder_create_nal_outfile(struct encoder_params_s *params);
+int  encoder_frame_ingested(struct encoder_params_s *params);
+void encoder_frame_add_osd(struct encoder_params_s *params, unsigned char *frame);
 
 #endif

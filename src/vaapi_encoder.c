@@ -78,13 +78,6 @@ static int h264_packedheader = 0;	/* support pack header? */
 static int h264_maxref = (1 << 16 | 1);
 static int h264_entropy_mode = 1;	/* cabac */
 
-FILE *csv_fp = NULL;
-
-/* Colorspace conversion */
-struct csc_ctx_s csc_ctx;
-
-int quiet_encode = 0;
-
 static unsigned int frame_width_mbaligned;
 static unsigned int frame_height_mbaligned;
 //static unsigned int frame_slices = 1;
@@ -1772,12 +1765,12 @@ static int save_codeddata(struct encoder_params_s *params,
 	}
 	vaUnmapBuffer(va_dpy, coded_buf[display_order % SURFACE_NUM]);
 
-	if (csv_fp) {
+	if (params->csv_fp) {
 		if (frame_number == 0) {
-			fprintf(csv_fp, "number,time,delta,size\n");
+			fprintf(params->csv_fp, "number,time,delta,size\n");
 		}
 		gettimeofday(&frame_time[frame_number%2], NULL);
-		fprintf(csv_fp, "%lu,%010ld.%05ld,%.3f,%u\n",
+		fprintf(params->csv_fp, "%lu,%010ld.%05ld,%.3f,%u\n",
 			frame_number,
 			frame_time[frame_number%2].tv_sec,
 			frame_time[frame_number%2].tv_usec,
@@ -1788,7 +1781,7 @@ static int save_codeddata(struct encoder_params_s *params,
 		frame_number++;
 	}
 
-	if (!quiet_encode) {
+	if (!params->quiet_encode) {
 		printf("\r      ");	/* return back to startpoint */
 		switch (encode_order % 4) {
 		case 0:
@@ -1807,8 +1800,6 @@ static int save_codeddata(struct encoder_params_s *params,
 		printf("%08lld", encode_order);
 		printf("(%06d bytes coded)", coded_size);
 	}
-
-	fflush(params->nal_fp);
 
 	return 0;
 }
@@ -2012,12 +2003,12 @@ static int vaapi_encode_frame_helper(struct encoder_params_s *params, unsigned c
 		}
 		if (IS_BGRX(params)) {
 			for (i = 0; i < SURFACE_NUM; i++)
-				va_status = csc_convert_rgbdata_to_yuv(&csc_ctx, frame, src_surface[i]);
+				va_status = csc_convert_rgbdata_to_yuv(&params->csc_ctx, frame, src_surface[i]);
 		}
 	} else {
 		if (IS_BGRX(params)) {
 			/* CSC convert pincoming BGRX frame to yuv output surface */
-			va_status = csc_convert_rgbdata_to_yuv(&csc_ctx, frame, src_surface[current_slot]);
+			va_status = csc_convert_rgbdata_to_yuv(&params->csc_ctx, frame, src_surface[current_slot]);
 		} else
 		if (IS_YUY2(params)) {
 			/* TODO: We probably don't need to specifically upload non de-interlaced content to the
@@ -2162,15 +2153,6 @@ static int vaapi_init(struct encoder_params_s *params)
 	memset(&pic_param, 0, sizeof(pic_param));
 	memset(&slice_param, 0, sizeof(slice_param));
 
-	/* store coded data into a file */
-	if (params->encoder_nalOutputFilename) {
-		params->nal_fp = fopen(params->encoder_nalOutputFilename, "w+");
-		if (params->nal_fp == NULL) {
-			printf("Open file %s failed, exit\n", params->encoder_nalOutputFilename);
-			exit(1);
-		}
-	}
-
 	frame_width_mbaligned = (params->width + 15) & (~15);
 	frame_height_mbaligned = (params->height + 15) & (~15);
 	if (params->width != frame_width_mbaligned || params->height != frame_height_mbaligned) {
@@ -2180,6 +2162,8 @@ static int vaapi_init(struct encoder_params_s *params)
 		     frame_height_mbaligned);
 	}
 
+	/* store coded data into a file */
+	encoder_create_nal_outfile(params);
 	encoder_print_input(params);
 
 	init_va(params);
@@ -2191,7 +2175,7 @@ static int vaapi_init(struct encoder_params_s *params)
 	setup_encode();
 
 	if (IS_BGRX(params))
-		csc_alloc(&csc_ctx, va_dpy, vpp_config, vpp_context,
+		csc_alloc(&params->csc_ctx, va_dpy, vpp_config, vpp_context,
 			frame_width_mbaligned, frame_height_mbaligned);
 
 	return 0;
@@ -2205,7 +2189,7 @@ static void vaapi_close(struct encoder_params_s *params)
 		usleep(250 * 1000);
 
 	if (IS_BGRX(params))
-		csc_free(&csc_ctx);
+		csc_free(&params->csc_ctx);
 
 	release_encode();
 	deinit_va();
@@ -2243,37 +2227,14 @@ static int vaapi_encode_frame(struct encoder_params_s *params, unsigned char *in
 	}
 #endif
 
-	if (IS_YUY2(params) && params->enable_osd) {
-		/* Warning: We're going to directly modify the input pixels. In fixed
-		 * frame encoding we'll continuiously overwrite and alter the static
-		 * image. If for any reason our OSD strings below begin to shorten,
-		 * we'll leave old pixel data in the source image.
-		 * This is intensional and saves an additional frame copy.
-		 */
-		encoder_display_render_reset(&params->display_ctx, inbuf, params->width * 2);
+	/* Etch into the frame the OSD stats before encoding, if required */
+	encoder_frame_add_osd(params, inbuf);
 
-		/* Render any OSD */
-		char str[256];
-		time_t now = time(NULL);
-		struct tm *tm = localtime(&now);
-		sprintf(str, "%04d/%02d/%02d-%02d:%02d:%02d",
-			tm->tm_year + 1900,
-			tm->tm_mon + 1,
-			tm->tm_mday,
-			tm->tm_hour,
-			tm->tm_min,
-			tm->tm_sec
-			);
-		encoder_display_render_string(&params->display_ctx, (unsigned char*)str, strlen(str), 0, 10);
-
-		sprintf(str, "FRM: %lld", params->frames_processed);
-		encoder_display_render_string(&params->display_ctx, (unsigned char*)str, strlen(str), 0, 11);
-	}
-
+	/* Encode frame */
 	vaapi_encode_frame_helper(params, inbuf);
 
-	params->frames_processed++;
-	return 1;
+	/* Update encoder core statistics */
+	return encoder_frame_ingested(params);
 }
 
 struct encoder_operations_s vaapi_ops = 

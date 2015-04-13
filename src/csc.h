@@ -1,8 +1,10 @@
 #ifndef CSC_H
 #define CSC_H
 
-#include "encoder.h"
-#include "main.h"
+#include <va/va.h>
+#include <va/va_drmcommon.h>
+#include <va/va_vpp.h>
+#include <va/va_enc_h264.h>
 
 struct csc_ctx_s
 {

@@ -23,14 +23,7 @@ static int x264_init(struct encoder_params_s *params)
 	}
 
 	/* store coded data into a file */
-	if (params->encoder_nalOutputFilename) {
-		params->nal_fp = fopen(params->encoder_nalOutputFilename, "w+");
-		if (params->nal_fp == NULL) {
-			printf("Open file %s failed, exit\n", params->encoder_nalOutputFilename);
-			exit(1);
-		}
-	}
-
+	encoder_create_nal_outfile(params);
 	encoder_print_input(params);
 
 	struct x264_vars_s *x264_vars = &params->x264_vars;
@@ -91,33 +84,10 @@ static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inb
 		exit(1);
 	}
 
-	if (IS_YUY2(params) && params->enable_osd) {
-		/* Warning: We're going to directly modify the input pixels. In fixed
-		 * frame encoding we'll continuiously overwrite and alter the static
-		 * image. If for any reason our OSD strings below begin to shorten,
-		 * we'll leave old pixel data in the source image.
-		 * This is intensional and saves an additional frame copy.
-		 */
-		encoder_display_render_reset(&params->display_ctx, inbuf, params->width * 2);
+	/* Etch into the frame the OSD stats before encoding, if required */
+	encoder_frame_add_osd(params, inbuf);
 
-		/* Render any OSD */
-		char str[256];
-		time_t now = time(NULL);
-		struct tm *tm = localtime(&now);
-		sprintf(str, "%04d/%02d/%02d-%02d:%02d:%02d",
-			tm->tm_year + 1900,
-			tm->tm_mon + 1,
-			tm->tm_mday,
-			tm->tm_hour,
-			tm->tm_min,
-			tm->tm_sec
-			);
-		encoder_display_render_string(&params->display_ctx, (unsigned char*)str, strlen(str), 0, 10);
-
-		sprintf(str, "FRM: %lld", params->frames_processed);
-		encoder_display_render_string(&params->display_ctx, (unsigned char*)str, strlen(str), 0, 11);
-	}
-
+	/* Colorspace convert the frame and encode it */
 	struct x264_vars_s *x264_vars = &params->x264_vars;
 
 	if (IS_YUY2(params)) {
@@ -155,8 +125,8 @@ static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inb
 		encoder_output_codeddata(params, nal->p_payload, nal->i_payload, 0);
 	}
 
-	params->frames_processed++;
-	return 1;
+	/* Update encoder core statistics */
+	return encoder_frame_ingested(params);
 }
 
 struct encoder_operations_s x264_ops = 
