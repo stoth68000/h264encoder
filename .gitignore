@@ -31,3 +31,8 @@ Makefile.in
 /GRTAGS
 /GSYMS
 /GTAGS
+
+src/h264encoder
+src/.deps/
+src/Makefile
+
