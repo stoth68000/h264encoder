@@ -99,8 +99,8 @@ static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inb
 			params->width, params->height);
 	} else
 	if (IS_BGRX(params)) {
-		/* Convert BGRA to I420. */
-		BGRAToI420(inbuf, params->width * 4,
+		/* Convert ARGB to I420. */
+		ARGBToI420(inbuf, params->width * 4,
 			x264_vars->img->plane[0], x264_vars->img->i_stride[0],
 			x264_vars->img->plane[1], x264_vars->img->i_stride[1],
 			x264_vars->img->plane[2], x264_vars->img->i_stride[2],
