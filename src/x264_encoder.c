@@ -119,11 +119,16 @@ static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inb
 
 	x264_vars->nalcount += i_nals;
 	x264_vars->bytecount += frame_size;
+#if 0
 	printf("nals = %lld bytes = %lld\n", x264_vars->nalcount, x264_vars->bytecount);
+#endif
 	for (int i = 0; i < i_nals; i++) {
 		x264_nal_t *nal = nals + i;
 		encoder_output_codeddata(params, nal->p_payload, nal->i_payload, 0);
 	}
+
+	/* Progress/visual indicator */
+	encoder_output_console_progress(params);
 
 	/* Update encoder core statistics */
 	return encoder_frame_ingested(params);

@@ -1751,7 +1751,6 @@ static int save_codeddata(struct encoder_params_s *params,
 	unsigned int frame_size = 0;
 	VACodedBufferSegment *buf_list = NULL;
 	VAStatus va_status;
-	unsigned int coded_size = 0;
 
 	va_status =
 	    vaMapBuffer(va_dpy, coded_buf[display_order % SURFACE_NUM],
@@ -1759,9 +1758,8 @@ static int save_codeddata(struct encoder_params_s *params,
 	CHECK_VASTATUS(va_status, "vaMapBuffer");
 
 	while (buf_list != NULL) {
-		coded_size += encoder_output_codeddata(params, buf_list->buf, buf_list->size, frame_type);
+		frame_size = encoder_output_codeddata(params, buf_list->buf, buf_list->size, frame_type);
 		buf_list = (VACodedBufferSegment *) buf_list->next;
-		frame_size += coded_size;
 	}
 	vaUnmapBuffer(va_dpy, coded_buf[display_order % SURFACE_NUM]);
 
@@ -1781,25 +1779,7 @@ static int save_codeddata(struct encoder_params_s *params,
 		frame_number++;
 	}
 
-	if (!params->quiet_encode) {
-		printf("\r      ");	/* return back to startpoint */
-		switch (encode_order % 4) {
-		case 0:
-			printf("|");
-			break;
-		case 1:
-			printf("/");
-			break;
-		case 2:
-			printf("-");
-			break;
-		case 3:
-			printf("\\");
-			break;
-		}
-		printf("%08lld", encode_order);
-		printf("(%06d bytes coded)", coded_size);
-	}
+	encoder_output_console_progress(params);
 
 	return 0;
 }

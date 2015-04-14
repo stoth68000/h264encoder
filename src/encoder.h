@@ -77,6 +77,9 @@ struct encoder_params_s
 	char *encoder_nalOutputFilename;
 	FILE *nal_fp;
 
+	/* Total bytes output by the encoder */
+	unsigned long long coded_size;
+
 	unsigned int width;
 	unsigned int height;
 	unsigned int enable_osd;
@@ -140,5 +143,6 @@ int  encoder_output_codeddata(struct encoder_params_s *params, unsigned char *bu
 int  encoder_create_nal_outfile(struct encoder_params_s *params);
 int  encoder_frame_ingested(struct encoder_params_s *params);
 void encoder_frame_add_osd(struct encoder_params_s *params, unsigned char *frame);
+void encoder_output_console_progress(struct encoder_params_s *params);
 
 #endif

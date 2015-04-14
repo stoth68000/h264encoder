@@ -1,5 +1,27 @@
 #include "encoder.h"
 
+void encoder_output_console_progress(struct encoder_params_s *params)
+{
+	if (!params->quiet_encode) {
+		printf("\r      ");	/* return back to startpoint */
+		switch (params->frames_processed % 4) {
+		case 0:
+			printf("|");
+			break;
+		case 1:
+			printf("/");
+			break;
+		case 2:
+			printf("-");
+			break;
+		case 3:
+			printf("\\");
+			break;
+		}
+		printf(" %lld (coded)", params->coded_size);
+	}
+}
+
 void encoder_frame_add_osd(struct encoder_params_s *params, unsigned char *frame)
 {
 	if (IS_YUY2(params) && params->enable_osd) {
@@ -51,13 +73,13 @@ int encoder_create_nal_outfile(struct encoder_params_s *params)
 
 int encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf, int size, int isIFrame)
 {
-	unsigned int coded_size = 0;
+	int s;
 
 	if (params->nal_fp) {
-		coded_size += fwrite(buf, 1, size, params->nal_fp);
+		s = fwrite(buf, 1, size, params->nal_fp);
 		fflush(params->nal_fp);
 	} else
-		coded_size = size;
+		s = size;
 
 /* TODO: Urgh, hardcoded list of callbacks. Put them in a list
  * and enumerate and call.
@@ -71,7 +93,8 @@ int encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf
 	/* ... will drop the packet if MXC_VPU_UDP was not requested */
 	sendMXCVPUUDPPacket(buf, size, isIFrame);
 
-	return coded_size;
+	params->coded_size += s;
+	return s;
 }
 
 void encoder_print_input(struct encoder_params_s *params)
