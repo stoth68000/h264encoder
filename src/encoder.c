@@ -141,13 +141,15 @@ void encoder_set_defaults(struct encoder_params_s *p)
 
 extern struct encoder_operations_s vaapi_ops;
 extern struct encoder_operations_s x264_ops;
+extern struct encoder_operations_s lavc_ops;
 
 static struct encoder_module_s {
 	unsigned int type;
 	struct encoder_operations_s *operations;
 } encoder_modules[] = {
-	{ EM_VAAPI,	&vaapi_ops },
-	{ EM_X264,	&x264_ops },
+	{ EM_VAAPI,		&vaapi_ops },
+	{ EM_X264,		&x264_ops },
+	{ EM_AVCODEC_H264,	&lavc_ops },
 };
 
 struct encoder_operations_s *getEncoderTarget(unsigned int type)

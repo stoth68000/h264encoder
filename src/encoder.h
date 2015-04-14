@@ -22,6 +22,7 @@
 #include <va/va_vpp.h>
 #include <va/va_enc_h264.h>
 #include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
 #include <x264.h>
 #include <libyuv.h>
 
@@ -46,11 +47,10 @@ enum fourcc_e {
 	E_FOURCC_BGRX,
 };
 
-struct lavc_x264_params {
+struct lavc_vars_s {
 	AVCodec *codec;
 	AVCodecContext *codec_ctx;
 	AVFrame *picture;
-	FILE *fh;
 };
 
 struct x264_vars_s {
@@ -103,7 +103,7 @@ struct encoder_params_s
 	unsigned int hrd_bitrate_multiplier;
 
 	/* libavcodec Specific */
-	struct lavc_x264_params lavc;
+	struct lavc_vars_s lavc_vars;
 
 	/* X264 ENCODER */
 	struct x264_vars_s x264_vars;
@@ -144,5 +144,6 @@ int  encoder_create_nal_outfile(struct encoder_params_s *params);
 int  encoder_frame_ingested(struct encoder_params_s *params);
 void encoder_frame_add_osd(struct encoder_params_s *params, unsigned char *frame);
 void encoder_output_console_progress(struct encoder_params_s *params);
+int encoder_pre_encode_checks(struct encoder_params_s *params);
 
 #endif

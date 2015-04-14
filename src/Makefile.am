@@ -22,6 +22,7 @@ h264encoder_LDADD = \
 h264encoder_SOURCES = \
 	x264_encoder.c \
 	vaapi_encoder.c \
+	lavc_encoder.c \
 	encoder.c \
 	encoder.h \
 	capture.c \
