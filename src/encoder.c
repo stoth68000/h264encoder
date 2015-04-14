@@ -149,7 +149,9 @@ static struct encoder_module_s {
 } encoder_modules[] = {
 	{ EM_VAAPI,		&vaapi_ops },
 	{ EM_X264,		&x264_ops },
+#if 0
 	{ EM_AVCODEC_H264,	&lavc_ops },
+#endif
 };
 
 struct encoder_operations_s *getEncoderTarget(unsigned int type)

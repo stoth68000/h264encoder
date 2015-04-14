@@ -1,5 +1,6 @@
 #include "encoder.h"
 
+#if 0
 static int lavc_init(struct encoder_params_s *params)
 {
 	assert(params);
@@ -145,6 +146,9 @@ static int lavc_encode_frame(struct encoder_params_s *params, unsigned char *inb
 	/* Colorspace convert the frame and encode it */
 	struct lavc_vars_s *lavc_vars = &params->lavc_vars;
 
+	/* TODO: Colorspace convert the incoming image into the correctly
+	 * formatted libav picture frame (AVPacket).
+	 */
 #if 0
 	if (IS_YUY2(params)) {
 		/* Convert YUY2 to I420. */
@@ -220,3 +224,4 @@ struct encoder_operations_s lavc_ops =
         .close		= lavc_close,
         .encode_frame	= lavc_encode_frame,
 };
+#endif
