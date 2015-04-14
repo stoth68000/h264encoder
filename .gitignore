@@ -35,4 +35,16 @@ Makefile.in
 src/h264encoder
 src/.deps/
 src/Makefile
+768-will-crash-vpu.nals
+ChangeLog
+Makefile
+NTSC_Test_Pattern.bmp
+config.h
+config.log
+config.status
+libtool
+parse.pl
+stamp-h1
+stream.csv
+tarball.sh
 
