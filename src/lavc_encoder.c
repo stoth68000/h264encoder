@@ -3,30 +3,6 @@
 #if 0
 static int lavc_init(struct encoder_params_s *params)
 {
-	assert(params);
-	printf("%s(%d, %d)\n", __func__, params->width, params->height);
-
-	if ((params->width != 720) && (params->width % 32)) {
-		printf("Width(%d) must be an exact multiple of 32 pixels\n", params->width);
-		return -1;
-	}
-	if (params->height % 16) {
-		printf("Height(%d) must be an exact multiple of 16 pixels\n", params->height);
-		return -1;
-	}
-
-	switch (params->input_fourcc) {
-	case E_FOURCC_YUY2:
-	case E_FOURCC_BGRX:
-		break;
-	default:
-		return -1;
-	}
-
-	/* store coded data into a file */
-	encoder_create_nal_outfile(params);
-	encoder_print_input(params);
-
 	/* Init and register all available library codecs */
 	// http://stackoverflow.com/questions/3553003/encoding-h-264-with-libavcodec-x264
 	//avcodec_init();
@@ -120,29 +96,14 @@ static void lavc_close(struct encoder_params_s *params)
 	av_free(lavc_vars->picture);
 }
 
-static void lavc_set_defaults(struct encoder_params_s *p)
+static int lavc_set_defaults(struct encoder_params_s *p)
 {
-	encoder_set_defaults(p);
-	p->type = EM_AVCODEC_H264;
+	/* If required */
+	return 0;
 }
 
 static int lavc_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 {
-	if ((!params) || (!inbuf))
-		return 0;
-
-	switch (params->input_fourcc) {
-	case E_FOURCC_YUY2:
-	case E_FOURCC_BGRX:
-		break;
-	default:
-		printf("Fatal, unsupported FOURCC\n");
-		exit(1);
-	}
-
-	/* Etch into the frame the OSD stats before encoding, if required */
-	encoder_frame_add_osd(params, inbuf);
-
 	/* Colorspace convert the frame and encode it */
 	struct lavc_vars_s *lavc_vars = &params->lavc_vars;
 
@@ -165,6 +126,9 @@ static int lavc_encode_frame(struct encoder_params_s *params, unsigned char *inb
 			x264_vars->img->plane[1], x264_vars->img->i_stride[1],
 			x264_vars->img->plane[2], x264_vars->img->i_stride[2],
 			params->width, params->height);
+	} else
+	if (IS_I420(params)) {
+		/* TODO: Add support for this colorspace */
 	}
 #endif
 
@@ -208,17 +172,21 @@ static int lavc_encode_frame(struct encoder_params_s *params, unsigned char *inb
 		}
 	}
 
-	/* Progress/visual indicator */
-	encoder_output_console_progress(params);
-
-	/* Update encoder core statistics */
-	return encoder_frame_ingested(params);
+	return 1;
 }
+
+static enum fourcc_e supportedColorspaces[] = {
+	E_FOURCC_YUY2,
+	E_FOURCC_BGRX,
+	//E_FOURCC_I420,
+	0, /* terminator */
+};
 
 struct encoder_operations_s lavc_ops = 
 {
 	.type		= EM_AVCODEC_H264,
         .name		= "libavcodec H.264 Encoder",
+	.supportedColorspaces = &supportedColorspaces[0],
         .init		= lavc_init,
         .set_defaults	= lavc_set_defaults,
         .close		= lavc_close,

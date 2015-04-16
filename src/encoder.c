@@ -1,5 +1,144 @@
 #include "encoder.h"
 
+#define MEASURE_PERFORMANCE 0
+
+int encoder_init(struct encoder_operations_s *ops, struct encoder_params_s *params)
+{
+	assert(ops);
+	assert(params);
+	printf("%s(%d, %d)\n", __func__, params->width, params->height);
+
+	if ((params->width != 720) && (params->width % 32)) {
+		printf("Width(%d) must be an exact multiple of 32 pixels\n", params->width);
+		return -1;
+	}
+	if (params->height % 16) {
+		printf("Height(%d) must be an exact multiple of 16 pixels\n", params->height);
+		return -1;
+	}
+
+	if (encoder_isSupportedColorspace(params, params->input_fourcc) == 0) {
+		printf("Fatal, unsupported FOURCC (%x)\n", params->input_fourcc);
+		exit(1);
+	}
+
+	/* store coded data into a file */
+	encoder_create_nal_outfile(params);
+	encoder_print_input(params);
+
+	int ret = ops->init(params);
+
+	return ret;
+}
+
+static void _set_defaults(struct encoder_params_s *p)
+{
+	memset(p, 0, sizeof(*p));
+	p->initial_qp = 26;
+	p->minimal_qp = 0;
+	p->enable_osd = 0;
+	p->intra_period = 30;
+	p->intra_idr_period = 60;
+	p->ip_period = 1;
+	p->h264_profile = VAProfileH264High;
+	p->level_idc = 41;
+	p->h264_entropy_mode = 1;
+	p->rc_mode = VA_RC_VBR;
+	p->frame_bitrate = 3000000;
+	p->hrd_bitrate_multiplier = 16;
+	p->input_fourcc = E_FOURCC_UNDEFINED;
+	p->frame_rate = 15;
+	p->frame_count = 60;
+
+	encoder_display_init(&p->display_ctx);
+}
+
+int encoder_set_defaults(struct encoder_operations_s *ops, struct encoder_params_s *params)
+{
+	assert(ops);
+	assert(params);
+
+        _set_defaults(params);
+	params->type = ops->type;
+
+	return ops->set_defaults(params);
+}
+
+void encoder_close(struct encoder_operations_s *ops, struct encoder_params_s *params)
+{
+	assert(ops);
+	assert(params);
+
+	ops->close(params);
+}
+
+/* Core func, all capture sources call us, we call the ops encode frame func and
+ * handle param validation, performance measurements etc.
+ */
+int encoder_encode_frame(struct encoder_operations_s *ops, struct encoder_params_s *params, unsigned char *inbuf)
+{
+	assert(ops);
+	assert(params);
+	assert(inbuf);
+
+	if (encoder_isSupportedColorspace(params, params->input_fourcc) == 0) {
+		printf("Fatal, unsupported FOURCC\n");
+		exit(1);
+	}
+
+	/* Etch into the frame the OSD stats before encoding, if required */
+	encoder_frame_add_osd(params, inbuf);
+
+#if MEASURE_PERFORMANCE
+	unsigned int elapsedMS;
+	struct timeval now;
+	gettimeofday(&now, 0);
+#endif
+
+	int ret = ops->encode_frame(params, inbuf);
+
+#if MEASURE_PERFORMANCE
+	elapsedMS = encoder_measureElapsedMS(&now);
+	printf("%s() frame encode took %dms\n", __func__, elapsedMS);
+#endif
+
+	/* Progress/visual indicator */
+	encoder_output_console_progress(params);
+
+	/* Update encoder core statistics */
+	encoder_frame_ingested(params);
+
+	return ret;
+}
+
+int encoder_isSupportedColorspace(struct encoder_params_s *params, enum fourcc_e csc)
+{
+	struct encoder_operations_s *ops = getEncoderTarget(params->type);
+	assert(ops);
+
+	int i = 0;
+	while (ops->supportedColorspaces[i] != 0) {
+		if (ops->supportedColorspaces[i] == csc)
+			return 1;
+		i++;
+	}
+
+	return 0;
+}
+
+//struct timeval now;
+//gettimeofday(&now, 0);
+unsigned int encoder_measureElapsedMS(struct timeval *then)
+{
+	struct timeval now;
+	gettimeofday(&now, 0);
+
+	unsigned int elapsedTime = (now.tv_sec - then->tv_sec) * 1000.0; /* sec to ms */
+	elapsedTime += (now.tv_usec - then->tv_usec) / 1000.0;  /* us to ms */
+
+	return elapsedTime;
+}
+
 void encoder_output_console_progress(struct encoder_params_s *params)
 {
 	if (!params->quiet_encode) {
@@ -115,28 +254,6 @@ void encoder_print_input(struct encoder_params_s *params)
 		params->encoder_nalOutputFilename : "N/A");
 	printf("INPUT: HRD BR/Multi : %d\n", params->hrd_bitrate_multiplier);
 	printf("\n\n");		/* return back to startpoint */
-}
-
-void encoder_set_defaults(struct encoder_params_s *p)
-{
-	memset(p, 0, sizeof(*p));
-	p->initial_qp = 26;
-	p->minimal_qp = 0;
-	p->enable_osd = 0;
-	p->intra_period = 30;
-	p->intra_idr_period = 60;
-	p->ip_period = 1;
-	p->h264_profile = VAProfileH264High;
-	p->level_idc = 41;
-	p->h264_entropy_mode = 1;
-	p->rc_mode = VA_RC_VBR;
-	p->frame_bitrate = 3000000;
-	p->hrd_bitrate_multiplier = 16;
-	p->input_fourcc = E_FOURCC_UNDEFINED;
-	p->frame_rate = 30;
-	p->frame_count = 60;
-
-	encoder_display_init(&p->display_ctx);
 }
 
 extern struct encoder_operations_s vaapi_ops;

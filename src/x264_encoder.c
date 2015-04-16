@@ -2,33 +2,10 @@
 
 static int x264_init(struct encoder_params_s *params)
 {
-	assert(params);
-	printf("%s(%d, %d)\n", __func__, params->width, params->height);
-
-	if ((params->width != 720) && (params->width % 32)) {
-		printf("Width(%d) must be an exact multiple of 32 pixels\n", params->width);
-		return -1;
-	}
-	if (params->height % 16) {
-		printf("Height(%d) must be an exact multiple of 16 pixels\n", params->height);
-		return -1;
-	}
-
-	switch (params->input_fourcc) {
-	case E_FOURCC_YUY2:
-	case E_FOURCC_BGRX:
-		break;
-	default:
-		return -1;
-	}
-
-	/* store coded data into a file */
-	encoder_create_nal_outfile(params);
-	encoder_print_input(params);
-
+	printf("%s()\n", __func__);
 	struct x264_vars_s *x264_vars = &params->x264_vars;
 	x264_param_t *x264Param = &params->x264_vars.x264_params;
-	x264_param_default_preset(x264Param, "veryfast", "zerolatency");
+	x264_param_default_preset(x264Param, "ultrafast", "zerolatency");
 	x264Param->i_threads = 1;
 	x264Param->i_width = params->width;
 	x264Param->i_height = params->height;
@@ -64,31 +41,25 @@ static void x264_close(struct encoder_params_s *params)
         x264_encoder_close(params->x264_vars.encoder);
 }
 
-static void x264_set_defaults(struct encoder_params_s *p)
+static int x264_set_defaults(struct encoder_params_s *p)
 {
-	encoder_set_defaults(p);
-	p->type = EM_X264;
+	/* If required */
+	return 0;
 }
 
 static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 {
-	if ((!params) || (!inbuf))
-		return 0;
-
-	switch (params->input_fourcc) {
-	case E_FOURCC_YUY2:
-	case E_FOURCC_BGRX:
-		break;
-	default:
-		printf("Fatal, unsupported FOURCC\n");
-		exit(1);
-	}
-
-	/* Etch into the frame the OSD stats before encoding, if required */
-	encoder_frame_add_osd(params, inbuf);
-
 	/* Colorspace convert the frame and encode it */
 	struct x264_vars_s *x264_vars = &params->x264_vars;
+
+	/* We redirect the picture image plane pointers to reference
+	 * our incoming buffer, saving a memcpy. We put those pointers
+	 * back later, so to avoid a x264 free'ing related issue and
+	 * ensure proper memory handling.
+	 */
+	unsigned char *x = x264_vars->img->plane[0];
+	unsigned char *y = x264_vars->img->plane[1];
+	unsigned char *z = x264_vars->img->plane[2];
 
 	if (IS_YUY2(params)) {
 		/* Convert YUY2 to I420. */
@@ -105,6 +76,15 @@ static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inb
 			x264_vars->img->plane[1], x264_vars->img->i_stride[1],
 			x264_vars->img->plane[2], x264_vars->img->i_stride[2],
 			params->width, params->height);
+	} else
+	if (IS_I420(params)) {
+		unsigned char *a = inbuf;
+		unsigned char *b = a + (params->width * params->height);
+		unsigned char *c = b + (params->width * params->height / 4);
+
+		x264_vars->img->plane[0] = a;
+		x264_vars->img->plane[1] = b;
+		x264_vars->img->plane[2] = c;
 	}
 
 	/* Encode image */
@@ -120,24 +100,34 @@ static int x264_encode_frame(struct encoder_params_s *params, unsigned char *inb
 	x264_vars->nalcount += i_nals;
 	x264_vars->bytecount += frame_size;
 #if 0
-	printf("nals = %lld bytes = %lld\n", x264_vars->nalcount, x264_vars->bytecount);
+	printf("nals = %lld bytes = %lld time = %dms(%d)\n",
+		x264_vars->nalcount, x264_vars->bytecount, elapsedMS,
+		frame_size);
 #endif
 	for (int i = 0; i < i_nals; i++) {
 		x264_nal_t *nal = nals + i;
 		encoder_output_codeddata(params, nal->p_payload, nal->i_payload, 0);
 	}
 
-	/* Progress/visual indicator */
-	encoder_output_console_progress(params);
+	x264_vars->img->plane[0] = x;
+	x264_vars->img->plane[1] = y;
+	x264_vars->img->plane[2] = z;
 
-	/* Update encoder core statistics */
-	return encoder_frame_ingested(params);
+	return 1;
 }
+
+static enum fourcc_e supportedColorspaces[] = {
+        E_FOURCC_YUY2,
+        E_FOURCC_BGRX,
+        E_FOURCC_I420,
+        0, /* terminator */
+};
 
 struct encoder_operations_s x264_ops = 
 {
 	.type		= EM_X264,
         .name		= "libx264 Encoder",
+	.supportedColorspaces = &supportedColorspaces[0],
         .init		= x264_init,
         .set_defaults	= x264_set_defaults,
         .close		= x264_close,

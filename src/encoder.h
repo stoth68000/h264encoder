@@ -40,11 +40,13 @@
 
 #define IS_YUY2(p) ((p)->input_fourcc == E_FOURCC_YUY2)
 #define IS_BGRX(p) ((p)->input_fourcc == E_FOURCC_BGRX)
+#define IS_I420(p) ((p)->input_fourcc == E_FOURCC_I420)
 
 enum fourcc_e {
 	E_FOURCC_UNDEFINED = 0,
 	E_FOURCC_YUY2,
 	E_FOURCC_BGRX,
+	E_FOURCC_I420,
 };
 
 struct lavc_vars_s {
@@ -122,13 +124,22 @@ char *encoder_rc_to_string(int rcmode);
 int   encoder_string_to_profile(char *str);
 char *encoder_profile_to_string(int profile);
 
+/* Frame encoders (video) implement these
+ * callbacks in their <name>_encoder.c implementation.
+ * ONLY the encoder.c core implementation is entitled
+ * to query or call these directly.
+ * all access to encoders is done through the encoder
+ * core encoder_*() calls.
+ */
 struct encoder_operations_s
 {
         unsigned int type;
         char *name;
 
+	enum fourcc_e *supportedColorspaces;
+
 	int  (*init)(struct encoder_params_s *);
-	void (*set_defaults)(struct encoder_params_s *);
+	int  (*set_defaults)(struct encoder_params_s *);
 	void (*close)(struct encoder_params_s *);
 	int  (*encode_frame)(struct encoder_params_s *, unsigned char *);
 };
@@ -137,13 +148,19 @@ extern struct encoder_operations_s vaapi_ops;
 
 struct encoder_operations_s *getEncoderTarget(unsigned int type);
 
-void encoder_set_defaults(struct encoder_params_s *p);
 void encoder_print_input(struct encoder_params_s *p);
 int  encoder_output_codeddata(struct encoder_params_s *params, unsigned char *buf, int size, int isIFrame);
 int  encoder_create_nal_outfile(struct encoder_params_s *params);
 int  encoder_frame_ingested(struct encoder_params_s *params);
 void encoder_frame_add_osd(struct encoder_params_s *params, unsigned char *frame);
 void encoder_output_console_progress(struct encoder_params_s *params);
-int encoder_pre_encode_checks(struct encoder_params_s *params);
+int  encoder_pre_encode_checks(struct encoder_params_s *params);
+unsigned int encoder_measureElapsedMS(struct timeval *then);
+int  encoder_isSupportedColorspace(struct encoder_params_s *params, enum fourcc_e csc);
+
+int  encoder_init(struct encoder_operations_s *ops, struct encoder_params_s *params);
+int  encoder_set_defaults(struct encoder_operations_s *ops, struct encoder_params_s *p);
+int  encoder_encode_frame(struct encoder_operations_s *ops, struct encoder_params_s *params, unsigned char *inbuf);
+void encoder_close(struct encoder_operations_s *ops, struct encoder_params_s *params);
 
 #endif

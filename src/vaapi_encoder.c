@@ -2099,26 +2099,7 @@ static int deinit_va()
 
 static int vaapi_init(struct encoder_params_s *params)
 {
-	assert(params);
-	printf("%s(%d, %d)\n", __func__, params->width, params->height);
-
-	if ((params->width != 720) && (params->width % 32)) {
-		printf("Width(%d) must be an exact multiple of 32 pixels\n", params->width);
-		return -1;
-	}
-	if (params->height % 16) {
-		printf("Height(%d) must be an exact multiple of 16 pixels\n", params->height);
-		return -1;
-	}
-
-	switch (params->input_fourcc) {
-	case E_FOURCC_YUY2:
-	case E_FOURCC_BGRX:
-		break;
-	default:
-		return -1;
-	}
-
+	printf("%s()\n", __func__);
 	h264_profile = params->h264_profile;
 	params->intra_idr_period = params->frame_rate;
 	vpp_deinterlace_mode = params->deinterlacemode;
@@ -2141,10 +2122,6 @@ static int vaapi_init(struct encoder_params_s *params)
 		     params->width, params->height, frame_width_mbaligned,
 		     frame_height_mbaligned);
 	}
-
-	/* store coded data into a file */
-	encoder_create_nal_outfile(params);
-	encoder_print_input(params);
 
 	init_va(params);
 	if (init_vpp(params) < 0) {
@@ -2175,26 +2152,14 @@ static void vaapi_close(struct encoder_params_s *params)
 	deinit_va();
 }
 
-static void vaapi_set_defaults(struct encoder_params_s *p)
+static int vaapi_set_defaults(struct encoder_params_s *p)
 {
-	encoder_set_defaults(p);
-	p->type = EM_VAAPI;
+	/* If required */
+	return 0;
 }
 
 static int vaapi_encode_frame(struct encoder_params_s *params, unsigned char *inbuf)
 {
-	if ((!params) || (!inbuf))
-		return 0;
-
-	switch (params->input_fourcc) {
-	case E_FOURCC_YUY2:
-	case E_FOURCC_BGRX:
-		break;
-	default:
-		printf("Fatal, unsupported FOURCC\n");
-		exit(1);
-	}
-
 #if 0
 	/* Grab a frame - we'll use this for the static image */
 	static int fnr = 0;
@@ -2207,20 +2172,24 @@ static int vaapi_encode_frame(struct encoder_params_s *params, unsigned char *in
 	}
 #endif
 
-	/* Etch into the frame the OSD stats before encoding, if required */
-	encoder_frame_add_osd(params, inbuf);
-
 	/* Encode frame */
 	vaapi_encode_frame_helper(params, inbuf);
 
-	/* Update encoder core statistics */
-	return encoder_frame_ingested(params);
+	return 1;
 }
+
+static enum fourcc_e supportedColorspaces[] = {
+	E_FOURCC_YUY2,
+	E_FOURCC_BGRX,
+	/* No I420 support with VAAPI */
+	0, /* terminator */
+};
 
 struct encoder_operations_s vaapi_ops = 
 {
 	.type		= EM_VAAPI,
         .name		= "Intel VAAPI Encoder",
+	.supportedColorspaces = &supportedColorspaces[0],
         .init		= vaapi_init,
         .set_defaults	= vaapi_set_defaults,
         .close		= vaapi_close,

@@ -85,7 +85,7 @@ static void v4l_process_image(const void *p, ssize_t size)
 		       src_frame_size);
 		return;
 	}
-	if (!encoder->encode_frame(encoder_params, (unsigned char *)p))
+	if (!encoder_encode_frame(encoder, encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 

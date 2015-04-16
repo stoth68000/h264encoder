@@ -35,7 +35,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 {
 	struct encoder_params_s p;
 
-	encoder->set_defaults(&p);
+	encoder_set_defaults(encoder, &p);
 
 	printf("Usage:\n"
 		"\n"
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 		printf("Invalid encoder target, no encoder selected\n");
 		exit(1);
 	}
-	encoder->set_defaults(&encoder_params);
+	encoder_set_defaults(encoder, &encoder_params);
 
 	for (;;) {
 		int index;
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
 				printf("Invalid encoder target, no encoder selected\n");
 				exit(1);
 			}
-			encoder->set_defaults(&encoder_params);
+			encoder_set_defaults(encoder, &encoder_params);
 			break;
 		case 'W':
 			width = atoi(optarg);
@@ -437,7 +437,7 @@ int main(int argc, char **argv)
 	/* Initialize the encoder with the sources mandatory width / height */
 	encoder_params.height = capture_params.height;
 	encoder_params.width = capture_params.width;
-	if (encoder->init(&encoder_params)) {
+	if (encoder_init(encoder, &encoder_params)) {
 		printf("Error: Encoder init failed\n");
 		goto encoder_failed;
 	}
@@ -494,7 +494,7 @@ int main(int argc, char **argv)
 	source->stop();
 
 start_failed:
-	encoder->close(&encoder_params);
+	encoder_close(encoder, &encoder_params);
 
 	freeESHandler();
 

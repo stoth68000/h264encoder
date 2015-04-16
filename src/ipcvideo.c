@@ -43,9 +43,20 @@ static void ipcvideo_process_image(const void *p, ssize_t size)
 			printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
 			return;
 		}
+	} else
+	if (IS_I420(encoder_params)) {
+		ssize_t src_frame_size =
+			(ipc_dimensions.width * ipc_dimensions.height)		+ /* Y */
+			((ipc_dimensions.width * ipc_dimensions.height) / 4)	+ /* U */
+			((ipc_dimensions.width * ipc_dimensions.height) / 4)	; /* V */
+			
+		if (size != src_frame_size) {
+			printf("wrong buffer size: %zu expect %zu\n", size, src_frame_size);
+			return;
+		}
 	}
 
-	if (!encoder->encode_frame(encoder_params, (unsigned char *)p))
+	if (!encoder_encode_frame(encoder, encoder_params, (unsigned char *)p))
 		time_to_quit = 1;
 }
 
@@ -154,7 +165,17 @@ static int ipcvideo_init_device(struct encoder_params_s *p, struct capture_param
 		ipc_dimensions.height,
 		ipcFPS, ipcResubmitTimeoutMS);
 
-	encoder_params->input_fourcc = ipc_dimensions.fourcc;
+	if (ipc_dimensions.fourcc == IPCFOURCC_YUYV)
+		encoder_params->input_fourcc = E_FOURCC_YUY2;
+	else
+	if (ipc_dimensions.fourcc == IPCFOURCC_BGRX)
+		encoder_params->input_fourcc = E_FOURCC_BGRX;
+	else
+	if (ipc_dimensions.fourcc == IPCFOURCC_I420)
+		encoder_params->input_fourcc = E_FOURCC_I420;
+	else
+		encoder_params->input_fourcc = E_FOURCC_UNDEFINED;
+
 	return 0;
 }
 
