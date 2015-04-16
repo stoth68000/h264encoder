@@ -154,7 +154,7 @@ static int ipcvideo_init_device(struct encoder_params_s *p, struct capture_param
 		ipc_dimensions.height,
 		ipcFPS, ipcResubmitTimeoutMS);
 
-	encoder_params->input_fourcc = E_FOURCC_BGRX;
+	encoder_params->input_fourcc = ipc_dimensions.fourcc;
 	return 0;
 }
 
