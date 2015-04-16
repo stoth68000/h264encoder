@@ -23,14 +23,16 @@ static int x264_init(struct encoder_params_s *params)
 	/* Setup the encoder */
 	x264_vars->encoder = x264_encoder_open(x264Param);
 	x264_picture_alloc(&x264_vars->pic_in, X264_CSP_I420, params->width, params->height);
+	x264_vars->img = &x264_vars->pic_in.img;
+#if 0
 	printf("i_csp = %x\n", x264_vars->pic_in.img.i_csp);
 	printf("i_plane = %d\n", x264_vars->pic_in.img.i_plane);
-	x264_vars->img = &x264_vars->pic_in.img;
 	for (int i = 0; i < x264_vars->img->i_plane; i++) {
 		printf("stride[%d] = %d plane = %p\n", i,
 			x264_vars->img->i_stride[i],
 			x264_vars->img->plane[i]);
 	}
+#endif
 
 	return 0;
 }
