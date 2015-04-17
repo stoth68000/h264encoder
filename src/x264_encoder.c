@@ -27,6 +27,8 @@ static int x264_init(struct encoder_params_s *params)
 	x264Param->b_repeat_headers = 1;
 	x264Param->b_annexb = 1;
 	x264_param_apply_profile(x264Param, "baseline");
+	/* Level idc, bitrate multiplier not supported. */
+	/* h264_profile is intentially being ignored and we're useing baseline for load CPU usage. */
 
 	/* Setup the encoder */
 	x264_vars->encoder = x264_encoder_open(x264Param);
