@@ -2100,10 +2100,15 @@ static int deinit_va()
 static int vaapi_init(struct encoder_params_s *params)
 {
 	printf("%s()\n", __func__);
+
 	h264_profile = params->h264_profile;
-	params->intra_idr_period = params->frame_rate;
+	params->intra_period = params->frame_rate;
+	params->intra_idr_period = params->frame_rate * 2;
+
 	vpp_deinterlace_mode = params->deinterlacemode;
 	h264_entropy_mode = params->h264_entropy_mode;
+
+	params->frame_count = params->frame_rate * 2;
 
 	current_frame_encoding = 0;
 	encode_syncmode = 0;

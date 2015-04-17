@@ -47,7 +47,7 @@ static void _set_defaults(struct encoder_params_s *p)
 	p->frame_bitrate = 3000000;
 	p->hrd_bitrate_multiplier = 16;
 	p->input_fourcc = E_FOURCC_UNDEFINED;
-	p->frame_rate = 15;
+	p->frame_rate = 30;
 	p->frame_count = 60;
 	p->quiet_encode = 0;
 
