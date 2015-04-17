@@ -29,6 +29,8 @@ static int x264_init(struct encoder_params_s *params)
 	x264_param_apply_profile(x264Param, "baseline");
 	/* Level idc, bitrate multiplier not supported. */
 	/* h264_profile is intentially being ignored and we're useing baseline for load CPU usage. */
+	/* h264_entropy_mode is intentially being ignored as ultrafast requires cabac mode. */
+	/* initial_qp, minimal_qp is intentially being ignored as ultrafast drives this. */
 
 	/* Setup the encoder */
 	x264_vars->encoder = x264_encoder_open(x264Param);
