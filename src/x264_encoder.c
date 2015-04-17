@@ -3,10 +3,17 @@
 static int x264_init(struct encoder_params_s *params)
 {
 	printf("%s()\n", __func__);
+
+	if (params->deinterlacemode) {
+		printf("%s() deinterlacemode not suppported\n", __func__);
+		exit(1);
+	}
+
 	struct x264_vars_s *x264_vars = &params->x264_vars;
 	x264_param_t *x264Param = &params->x264_vars.x264_params;
+
 	x264_param_default_preset(x264Param, "ultrafast", "zerolatency");
-	x264Param->i_threads = 1;
+	x264Param->i_threads = 1; /* In testing, increasing this for gltest had a negative effect */
 	x264Param->i_width = params->width;
 	x264Param->i_height = params->height;
 	x264Param->i_fps_num = params->frame_rate;
