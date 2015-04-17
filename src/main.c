@@ -397,6 +397,7 @@ int main(int argc, char **argv)
 	} else {
 		capture_params.v4l.V4LFrameRate = V4LFrameRate;
 		capture_params.v4l.V4LNumerator = V4LNumerator;
+		encoder_params.frame_rate = V4LFrameRate;
 	}
 	capture_params.fps = capture_params.v4l.V4LFrameRate;
 	V4LFrameRate = capture_params.fps;
