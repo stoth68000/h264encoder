@@ -49,6 +49,7 @@ static void _set_defaults(struct encoder_params_s *p)
 	p->input_fourcc = E_FOURCC_UNDEFINED;
 	p->frame_rate = 15;
 	p->frame_count = 60;
+	p->quiet_encode = 0;
 
 	encoder_display_init(&p->display_ctx);
 }
