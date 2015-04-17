@@ -23,6 +23,7 @@ static int x264_init(struct encoder_params_s *params)
 	x264Param->rc.i_rc_method = X264_RC_CRF;
 	x264Param->rc.f_rf_constant = 25;
 	x264Param->rc.f_rf_constant_max = 35;
+	x264Param->rc.i_bitrate = params->frame_bitrate / 1000; /* Kbps */
 	x264Param->b_repeat_headers = 1;
 	x264Param->b_annexb = 1;
 	x264_param_apply_profile(x264Param, "baseline");
