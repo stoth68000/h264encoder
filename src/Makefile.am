@@ -39,6 +39,7 @@ h264encoder_SOURCES = \
 	rtp.h \
 	mxcvpuudp.c \
 	mxcvpuudp.h \
+	frames.h \
 	v4l.c \
 	v4l.h \
 	csc.c \
