@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include <libes2ts/es2ts.h>
+#include <libipcvideo/ipcvideo.h>
 
 #include "capture.h"
 #include "rtp.h"
@@ -200,6 +201,8 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			fprintf(stderr, "%s\n", PACKAGE_STRING);
+			fprintf(stderr, "  |-- libes2ts %s\n", es2ts_get_version ());
+			fprintf(stderr, "  |-- libipcvideo %s\n", ipcvideo_get_version ());
 			exit(0);
 			break;
 		case 'b':
