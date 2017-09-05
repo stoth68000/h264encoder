@@ -563,8 +563,8 @@ static void decklink_mainloop(void)
 
 struct capture_operations_s decklink_ops =
 {
-	.type		= CM_FIXED,
-	.name		= (char *)"Fixed Video Image (SD)",
+	.type		= CM_DECKLINK,
+	.name		= (char *)"Decklink SDI 1080p60 (HD)",
 	.set_defaults	= decklink_set_defaults,
 	.mainloop	= decklink_mainloop,
 	.stop		= decklink_stop_capturing,
