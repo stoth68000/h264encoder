@@ -1,9 +1,12 @@
+BLACKMAGIC_SDK_PATH = $(top_srcdir)/include/decklink-sdk
+
 bin_PROGRAMS = h264encoder
 
 h264encoder_CFLAGS = \
 	-D_BSD_SOURCE -D_XOPEN_SOURCE \
 	-DHAVE_VA_DRM -DHAVE_VA_X11 \
 	-I/KL/libyuv-read-only/include \
+	-I$(BLACKMAGIC_SDK_PATH) \
 	@PTHREAD_CFLAGS@ \
 	@LIBVA_CFLAGS@ \
 	@LIBAV_CFLAGS@ \
@@ -21,6 +24,7 @@ h264encoder_LDADD = \
 	@LIBES2TS_LIBS@ \
 	@LIBIPCVIDEO_LIBS@ \
 	@X11_LIBS@
+
 h264encoder_SOURCES = \
 	x264_encoder.c \
 	vaapi_encoder.c \
@@ -54,4 +58,6 @@ h264encoder_SOURCES = \
 	va_display.c \
 	va_display.h \
 	va_display_drm.c \
-	va_display_x11.c
+	va_display_x11.c \
+	decklink.cpp \
+	BMDConfig.cpp

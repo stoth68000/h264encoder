@@ -26,25 +26,32 @@
 #ifndef CAPTURE_H
 #define CAPTURE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "v4l.h"
 #include "ipcvideo.h"
 #include "fixed.h"
 #include "fixed-4k.h"
 #include "encoder.h"
 
+enum capture_type_e {
+	CM_V4L = 0,
+	CM_IPCVIDEO = 1,
+	CM_FIXED = 2,
+	CM_FIXED_4K = 3,
+	CM_DECKLINK = 4,
+	CM_MAX
+};
+
 struct capture_parameters_s
 {
-	enum {
-		CM_V4L = 0,
-		CM_IPCVIDEO = 1,
-		CM_FIXED = 2,
-		CM_FIXED_4K = 3,
-		CM_MAX
-	} type;
-
 	unsigned int fps;
 	unsigned int width;
 	unsigned int height;
+
+	enum capture_type_e type;
 
 	struct capture_v4l_params_s v4l;
 };
@@ -67,6 +74,10 @@ struct capture_operations_s
 };
 
 struct capture_operations_s *getCaptureSource(unsigned int type);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif //CAPTURE_H
 

@@ -63,7 +63,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 
 	encoder_set_defaults(encoder, &p);
 
-	printf("Usage:\n"
+	printf("A tool to capture raw video, feed it into a VA-API compressor and stream the output via network.\n");
+	printf("Usage:"
 		"\n"
 		"Options:\n"
 	        "-h, --help                    Print this message\n"
@@ -91,6 +92,9 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"-W, --dev-width <number>      Device width [720]\n"
 		"-H, --dev-height <number>     Device height [480]\n"
 		"-M, --mode <number>           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k [def: 0]\n"
+#if 0
+		"                              4=decklink-input#0 SDI 1080p60\n"
+#endif
 		"-D, --vppdeinterlace <number> 0=off 1=motionadaptive 2=bob\n"
 		"    --compressor <number>     0=vaapi 1=libavcodec/x264 2=x264 [def: 0]\n",
 		p.frame_bitrate

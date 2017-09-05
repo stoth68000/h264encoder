@@ -25,6 +25,8 @@
 
 #include "capture.h"
 
+extern struct capture_operations_s decklink_ops;
+
 static struct capture_module_s {
 	unsigned int type;
 	struct capture_operations_s *operations;
@@ -33,6 +35,7 @@ static struct capture_module_s {
 	{ CM_IPCVIDEO,	&ipcvideo_ops },
 	{ CM_FIXED,	&fixed_ops },
 	{ CM_FIXED_4K,	&fixed_4k_ops },
+	{ CM_DECKLINK,	&decklink_ops },
 };
 
 struct capture_operations_s *getCaptureSource(unsigned int type)
