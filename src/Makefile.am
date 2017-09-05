@@ -9,7 +9,9 @@ h264encoder_CFLAGS = \
 	@LIBAV_CFLAGS@ \
 	@LIBES2TS_CFLAGS@ \
 	@LIBIPCVIDEO_CFLAGS@ \
-	@X11_CFLAGS@
+	@X11_CFLAGS@ \
+	-O
+
 h264encoder_LDADD = \
 	-lm -lx264 \
 	-L/KL/libyuv-read-only -lyuv \
