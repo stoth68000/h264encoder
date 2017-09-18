@@ -92,9 +92,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"-W, --dev-width <number>      Device width [720]\n"
 		"-H, --dev-height <number>     Device height [480]\n"
 		"-M, --mode <number>           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k [def: 0]\n"
-#if 1
-		"                              4=decklink-input#0 SDI 1080p60\n"
-#endif
+		"                              4=decklink SDI 1080p60 (also see decklink-index)\n"
 		"-D, --vppdeinterlace <number> 0=off 1=motionadaptive 2=bob\n"
 		"    --compressor <number>     0=vaapi 1=libavcodec/x264 2=x264 [def: 0]\n",
 		p.frame_bitrate
