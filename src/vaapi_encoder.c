@@ -1081,8 +1081,10 @@ static int init_va(struct encoder_params_s *params)
 
 		if (tmp & VA_ENC_PACKED_HEADER_SLICE) {
 			printf("Support packed slice headers\n");
+#if 0
 			config_attrib[config_attrib_num].value |=
 			    VA_ENC_PACKED_HEADER_SLICE;
+#endif
 		}
 
 		if (tmp & VA_ENC_PACKED_HEADER_MISC) {
