@@ -110,7 +110,8 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"    --profile <BP|CBP|MP|HP>  [def: %s]\n"
 		"    --payloadmode <0|1>, 0 means RTP/TS, 1 RTP/ES [def: 0]\n"
 		"    --level_idc <number>      [def: %d]\n"
-		"    --hrd_bitrate_multiplier <number> [def: %d]\n",
+		"    --hrd_bitrate_multiplier <number> [def: %d]\n"
+		"    --decklink-index <number> [def: 0]\n",
 			p.initial_qp,
 			p.minimal_qp,
 			p.intra_period,
@@ -169,6 +170,7 @@ static const struct option long_options[] = {
 	{ "mxc_sendmode", required_argument, NULL, 19 },
 	{ "hrd_bitrate_multiplier", required_argument, NULL, 20 },
 	{ "compressor", required_argument, NULL, 21 },
+	{ "decklink-index", required_argument, NULL, 22 },
 
 	{ 0, 0, 0, 0}
 };
@@ -382,6 +384,9 @@ int main(int argc, char **argv)
 				exit(1);
 			}
 			encoder_set_defaults(encoder, &encoder_params);
+			break;
+		case 22:
+			encoder_params.source_nr = atoi(optarg);
 			break;
 		case 'W':
 			width = atoi(optarg);

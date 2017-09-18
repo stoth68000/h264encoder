@@ -75,6 +75,7 @@ static void _set_defaults(struct encoder_params_s *p)
 	p->frame_rate = 30;
 	p->frame_count = 60;
 	p->quiet_encode = 0;
+	p->source_nr = 0;
 
 	encoder_display_init(&p->display_ctx);
 }

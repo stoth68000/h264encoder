@@ -142,6 +142,9 @@ struct encoder_params_s
 
 	/* VAAPI Colorspace Conversion */
 	struct csc_ctx_s csc_ctx;
+
+	/* Blackmagic / Decklink input port */
+	int source_nr;
 };
 
 int   encoder_string_to_rc(char *str);

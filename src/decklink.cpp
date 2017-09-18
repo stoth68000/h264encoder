@@ -519,14 +519,16 @@ static void decklink_mainloop(void)
         struct timeval now;
         unsigned int p = 0;
 
+	char source_nr[26];
+	sprintf(source_nr, "-d %d", encoder_params->source_nr);
 	const char *argsX[] = {
 		"h264encoder",
-		"-d 0",  /* input #0 */
-		"-p 0",  /* 8 bit */
-		"-p 0",  /* 8 bit */
-		"-m 12", /* 1080p60 */
-		"-d 0",  /* input #0 */
-		"-p 0",  /* 8 bit */
+		source_nr,  /* input #0 */
+		"-p 0",     /* 8 bit */
+		"-p 0",     /* 8 bit */
+		"-m 12",    /* 1080p60 */
+		source_nr,  /* input #0 */
+		"-p 0",     /* 8 bit */
 		NULL,
 	};
 
