@@ -92,7 +92,7 @@ static void usage(struct encoder_operations_s *encoder, int argc, char **argv)
 		"-W, --dev-width <number>      Device width [720]\n"
 		"-H, --dev-height <number>     Device height [480]\n"
 		"-M, --mode <number>           0=v4l 1=ipcvideo 2=fixedframe 3=fixedframe4k [def: 0]\n"
-#if 0
+#if 1
 		"                              4=decklink-input#0 SDI 1080p60\n"
 #endif
 		"-D, --vppdeinterlace <number> 0=off 1=motionadaptive 2=bob\n"
@@ -435,7 +435,7 @@ int main(int argc, char **argv)
 	V4LFrameRate = capture_params.fps;
 
 	/* Configure the encoder to match the capture source */
-	if ((source->type == CM_FIXED) || (source->type == CM_FIXED_4K))
+	if ((source->type == CM_FIXED) || (source->type == CM_FIXED_4K) || (source->type == CM_DECKLINK))
 		encoder_params.enable_osd = 1;
 
 	if (source->type == CM_V4L) {

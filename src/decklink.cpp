@@ -41,11 +41,16 @@
 #include "BMDConfig.h"
 #include "DeckLinkAPIDispatch.cpp"
 
-static pthread_mutex_t g_sleepMutex;
-static pthread_cond_t g_sleepCond;
+//
+static struct encoder_operations_s *encoder = 0;
+static struct encoder_params_s *encoder_params = 0;
+static int ipcFPS = 30;
+static int ipcResubmitTimeoutMS = 0;
+static int fixedWidth;
+static int fixedHeight;
+
 static int g_videoOutputFile = -1;
 static int g_audioOutputFile = -1;
-static bool g_do_exit = false;
 
 static BMDConfig g_config;
 
@@ -125,6 +130,14 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 			if (timecodeString)
 				free((void *)timecodeString);
 
+			{ /* Pass it to the encoder */
+				void *p;
+				videoFrame->GetBytes(&p);
+
+			        if (!encoder_encode_frame(encoder, encoder_params, (unsigned char *)p))
+					time_to_quit = 1;
+			}
+
 			if (g_videoOutputFile != -1) {
 				videoFrame->GetBytes(&frameBytes);
 				write(g_videoOutputFile, frameBytes,
@@ -158,8 +171,7 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 
 	if (g_config.m_maxFrames > 0 && videoFrame
 	    && g_frameCount >= g_config.m_maxFrames) {
-		g_do_exit = true;
-		pthread_cond_signal(&g_sleepCond);
+		time_to_quit = true;
 	}
 
 	return S_OK;
@@ -205,15 +217,7 @@ bail:
 	return S_OK;
 }
 
-static void sigfunc(int signum)
-{
-	if (signum == SIGINT || signum == SIGTERM)
-		g_do_exit = true;
-
-	pthread_cond_signal(&g_sleepCond);
-}
-
-int decklink_main(int argc, char *argv[])
+int decklink_main(int argc, const char *arv[])
 {
 	HRESULT result;
 	int exitStatus = 1;
@@ -232,15 +236,8 @@ int decklink_main(int argc, char *argv[])
 
 	DeckLinkCaptureDelegate *delegate = NULL;
 
-	pthread_mutex_init(&g_sleepMutex, NULL);
-	pthread_cond_init(&g_sleepCond, NULL);
-
-	signal(SIGINT, sigfunc);
-	signal(SIGTERM, sigfunc);
-	signal(SIGHUP, sigfunc);
-
 	// Process the command line arguments
-	if (!g_config.ParseArguments(argc, argv)) {
+	if (!g_config.ParseArguments(argc, (char **)arv)) {
 		g_config.DisplayUsage(exitStatus);
 		goto bail;
 	}
@@ -380,7 +377,7 @@ int decklink_main(int argc, char *argv[])
 		}
 	}
 	// Block main thread until signal occurs
-	while (!g_do_exit) {
+	while (!time_to_quit) {
 		// Start capturing
 		result =
 		    g_deckLinkInput->EnableVideoInput(displayMode->
@@ -407,15 +404,16 @@ int decklink_main(int argc, char *argv[])
 
 		// All Okay.
 		exitStatus = 0;
-
-		pthread_mutex_lock(&g_sleepMutex);
-		pthread_cond_wait(&g_sleepCond, &g_sleepMutex);
-		pthread_mutex_unlock(&g_sleepMutex);
+	
+		while (!time_to_quit) {	
+			usleep(250 * 1000);
+		}
 
 		fprintf(stderr, "Stopping Capture\n");
 		g_deckLinkInput->StopStreams();
 		g_deckLinkInput->DisableAudioInput();
 		g_deckLinkInput->DisableVideoInput();
+		fprintf(stderr, "Stopped Capture\n");
 	}
 
 bail:
@@ -454,14 +452,6 @@ bail:
 	return exitStatus;
 }
 
-//
-static struct encoder_operations_s *encoder = 0;
-static int ipcFPS = 30;
-static int ipcResubmitTimeoutMS = 0;
-static int fixedWidth;
-static int fixedHeight;
-static struct encoder_params_s *encoder_params = 0;
-
 static void decklink_stop_capturing(void)
 {
 }
@@ -481,8 +471,8 @@ static void decklink_uninit_device(void)
 
 static int decklink_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
-        c->width = 1920;
-        c->height = 1080;
+        c->width = fixedWidth;
+        c->height = fixedHeight;
         ipcFPS = c->fps;
         encoder_params = p;
 
@@ -504,8 +494,6 @@ static void decklink_close_device(void)
 
 static int decklink_open_device()
 {
-        fixedWidth = 1920;
-        fixedHeight = 1080;
 #if 0
         if (((fixedWidth * 2) * fixedHeight) != sizeof(fixedframe)) {
                 fprintf(stderr, "fixed frame size miss-match\n");
@@ -519,6 +507,8 @@ static int decklink_open_device()
 static void decklink_set_defaults(struct capture_parameters_s *c)
 {
 	c->type = CM_DECKLINK;
+	fixedWidth = 1920;
+	fixedHeight = 1088;
 }
 
 static void decklink_mainloop(void)
@@ -528,6 +518,22 @@ static void decklink_mainloop(void)
          */
         struct timeval now;
         unsigned int p = 0;
+
+	const char *argsX[] = {
+		"h264encoder",
+		"-d 0",  /* input #0 */
+		"-p 0",  /* 8 bit */
+		"-p 0",  /* 8 bit */
+		"-m 12", /* 1080p60 */
+		"-d 0",  /* input #0 */
+		"-p 0",  /* 8 bit */
+		NULL,
+	};
+
+	//decklink_main(sizeof(args) / sizeof(char *), args);
+	decklink_main(6, &argsX[0]);
+
+	fprintf(stderr, "Stopped main\n");
 
 #if 0
         /* Imagemagik did a half-assed job at converting BMP to yuyv,
@@ -554,17 +560,13 @@ static void decklink_mainloop(void)
                 decklink_process_image(fixedframe, sizeof(fixedframe));
                 p = measureElapsedMS(&now);
         }
-#else
-        while (!time_to_quit) {
-		usleep(100 * 1000);
-	}
 #endif
 }
 
 struct capture_operations_s decklink_ops =
 {
 	.type		= CM_DECKLINK,
-	.name		= (char *)"Decklink SDI 1080p60 (HD)",
+	.name		= (char *)"Decklink SDI (HD)",
 	.set_defaults	= decklink_set_defaults,
 	.mainloop	= decklink_mainloop,
 	.stop		= decklink_stop_capturing,
@@ -573,6 +575,6 @@ struct capture_operations_s decklink_ops =
 	.init		= decklink_init_device,
 	.close		= decklink_close_device,
 	.open		= decklink_open_device,
-	.default_fps	= 30,
+	.default_fps	= 60,
 };
 
