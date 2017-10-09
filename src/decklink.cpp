@@ -138,71 +138,22 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 
 			{ /* Pass it to the encoder */
 				void *p;
-				uint32_t v[4];
-				uint32_t l = (videoFrame->GetRowBytes() / 4) * videoFrame->GetHeight();
 				videoFrame->GetBytes(&p);
-				uint8_t *xptr = (uint8_t *)p;
 
 				uint8_t *f = (uint8_t *)malloc(1920 * 2 * 1088);
-				uint8_t *f2 = f;
-				if (1) {
 
-					encoderSwsContext = sws_getCachedContext(encoderSwsContext,
-						1920, 1080, AV_PIX_FMT_UYVY422,
-						1920, 1080, AV_PIX_FMT_YUYV422, SWS_BICUBIC, NULL, NULL, NULL);
+				encoderSwsContext = sws_getCachedContext(encoderSwsContext,
+					1920, 1080, AV_PIX_FMT_UYVY422,
+					1920, 1080, AV_PIX_FMT_YUYV422, SWS_BICUBIC, NULL, NULL, NULL);
 
-					uint8_t *src_slices[] = { xptr };
-					uint8_t *dst_slices[] = { f2 };
-					const int src_slices_stride[] = { 1920 * 2 };
-					const int dst_slices_stride[] = { 1920 * 2 };
-					sws_scale(encoderSwsContext,
-						src_slices, src_slices_stride,
-						0, 1080,
-						dst_slices, dst_slices_stride);
-
-#if 0
-					uint32_t x, y;
-					uint32_t *s = (uint32_t *)p;
-					uint32_t *d = (uint32_t *)p;
-					for (int i = 0; i < l; i++) {
-						x = *s;
-						y  = ((x & 0xff00) >> 8);
-						y |= ((x & 0x00ff) << 8);
-						y |= ((x & 0xff000000) >> 8);
-						y |= ((x & 0x00ff0000) << 8);
-						*s = y;
-						s++;
-					}
-#endif
-
-#if 0
-					/* UYVY to YUY2 */
-					for (int i = 0; i < l; i++) {
-
-						/* Super slow, but good enough */
-						v[0] = *(xptr + 0); // U
-						v[1] = *(xptr + 1); // Y
-						v[2] = *(xptr + 2); // V
-						v[3] = *(xptr + 3); // Y
-
-						*(xptr + 0) = v[1]; // Y
-						*(xptr + 1) = v[0]; // U
-						*(xptr + 2) = v[3]; // Y
-						*(xptr + 3) = v[2]; // V
-
-						xptr += 4;
-
-#if 0
-						/* Blue YUY2 */
-						*(xptr + 0) = 0x1d;
-						*(xptr + 1) = 0xff;
-						*(xptr + 2) = 0x1d;
-						*(xptr + 3) = 0x6b;
-						xptr += 4;
-#endif
-					}
-#endif
-				}
+				uint8_t *src_slices[] = { (uint8_t *)p };
+				uint8_t *dst_slices[] = { f };
+				const int src_slices_stride[] = { 1920 * 2 };
+				const int dst_slices_stride[] = { 1920 * 2 };
+				sws_scale(encoderSwsContext,
+					src_slices, src_slices_stride,
+					0, 1080,
+					dst_slices, dst_slices_stride);
 
 			        if (!encoder_encode_frame(encoder, encoder_params, (unsigned char *)f))
 					time_to_quit = 1;
