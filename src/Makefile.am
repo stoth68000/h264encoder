@@ -16,7 +16,7 @@ h264encoder_CFLAGS = \
 	-O
 
 h264encoder_LDADD = \
-	-lm -lx264 \
+	-lm -lx264 -lswscale \
 	-L/KL/libyuv-read-only -lyuv \
 	@PTHREAD_LIBS@ \
 	@LIBVA_LIBS@ \
