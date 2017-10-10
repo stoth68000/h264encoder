@@ -14,6 +14,12 @@
  * of 16. That's not a strict VAAPI requirement, that's probably a sign that our
  * YUV-to-VAAPI upload function is broken. However, for the time being, 1088
  * serves our purposes fine. TODO: I guess we could YUY2 blackout the last 8 lines.
+ *
+ * Test with:
+ * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000
+ *
+ * Convert nals with:
+ * ffmpeg -y -i raw.nals -c:v copy -r 60 /tmp/raw.mp4
  */
 
 #define __STDC_CONSTANT_MACROS
