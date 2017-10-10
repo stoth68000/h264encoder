@@ -16,7 +16,7 @@
  * serves our purposes fine. TODO: I guess we could YUY2 blackout the last 8 lines.
  *
  * Test with:
- * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000
+ * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000 --initial_qp 5
  *
  * Convert nals with:
  * ffmpeg -y -i raw.nals -c:v copy -r 60 /tmp/raw.mp4
@@ -511,13 +511,12 @@ static void decklink_mainloop(void)
 	 * arg alignment creates parsing issues in BMDConfig.
 	 * So, for the time being, because time is limited,
 	 * I'm padding the array below to work around the issue.
-	 *
-	 * I test with:
-	 * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000
 	 */
 	char source_nr[26];
 	sprintf(source_nr, "-d %d", encoder_params->source_nr);
 	const char *argsX[] = {
+		"h264encoder",
+		"h264encoder",
 		"h264encoder",
 		"h264encoder",
 		"h264encoder",
@@ -532,7 +531,7 @@ static void decklink_mainloop(void)
 		NULL,
 	};
 
-	decklink_main(11, &argsX[0]);
+	decklink_main(13, &argsX[0]);
 
 	fprintf(stderr, "Decklink stopped main\n");
 }
