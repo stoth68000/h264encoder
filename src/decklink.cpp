@@ -9,6 +9,11 @@
  * here in as simple a way as possible. For sure, the glue between the core
  * "encoder" operations callbacks and the blackmagic controlling software
  * could do with some refinement.
+ *
+ * Why is the height 1088? Yeah, the encoder framework expects height to be a multiple
+ * of 16. That's not a strict VAAPI requirement, that's probably a sign that our
+ * YUV-to-VAAPI upload function is broken. However, for the time being, 1088
+ * serves our purposes fine. TODO: I guess we could YUY2 blackout the last 8 lines.
  */
 
 #define __STDC_CONSTANT_MACROS
@@ -68,10 +73,7 @@ ULONG DeckLinkCaptureDelegate::Release(void)
 	return newRefValue;
 }
 
-
-HRESULT DeckLinkCaptureDelegate::
-VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
-		       IDeckLinkAudioInputPacket * audioFrame)
+HRESULT DeckLinkCaptureDelegate::VideoInputFrameArrived(IDeckLinkVideoInputFrame *videoFrame, IDeckLinkAudioInputPacket *audioFrame)
 {
 	IDeckLinkVideoFrame *rightEyeFrame = NULL;
 	IDeckLinkVideoFrame3DExtensions *threeDExtensions = NULL;
@@ -82,8 +84,7 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 	if (videoFrame) {
 		// If 3D mode is enabled we retreive the 3D extensions interface which gives.
 		// us access to the right eye frame by calling GetFrameForRightEye() .
-		if ((videoFrame->
-		     QueryInterface(IID_IDeckLinkVideoFrame3DExtensions,
+		if ((videoFrame->QueryInterface(IID_IDeckLinkVideoFrame3DExtensions,
 				    (void **)&threeDExtensions) != S_OK)
 		    || (threeDExtensions->GetFrameForRightEye(&rightEyeFrame) !=
 			S_OK)) {
@@ -94,35 +95,27 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 			threeDExtensions->Release();
 
 		if (videoFrame->GetFlags() & bmdFrameHasNoInputSource) {
-			printf
-			    ("Frame received (#%lu) - No input signal detected\n",
-			     g_frameCount);
+			printf("Frame received (#%lu) - No input signal detected\n", g_frameCount);
 		} else {
 			const char *timecodeString = NULL;
 			if (g_config.m_timecodeFormat != 0) {
 				IDeckLinkTimecode *timecode;
-				if (videoFrame->
-				    GetTimecode(g_config.m_timecodeFormat,
-						&timecode) == S_OK) {
+				if (videoFrame->GetTimecode(g_config.m_timecodeFormat, &timecode) == S_OK) {
 					timecode->GetString(&timecodeString);
 				}
 			}
 
-			printf
-			    ("Frame received (#%lu) [%s] - %s - Size: %li bytes\n",
+			printf("Frame received (#%lu) [%s] - %s - Size: %li bytes\n",
 			     g_frameCount,
-			     timecodeString !=
-			     NULL ? timecodeString : "No timecode",
-			     rightEyeFrame !=
-			     NULL ? "Valid Frame (3D left/right)" :
+			     timecodeString != NULL ? timecodeString : "No timecode",
+			     rightEyeFrame != NULL ? "Valid Frame (3D left/right)" :
 			     "Valid Frame",
-			     videoFrame->GetRowBytes() *
-			     videoFrame->GetHeight());
+			     videoFrame->GetRowBytes() * videoFrame->GetHeight());
 
 			if (timecodeString)
 				free((void *)timecodeString);
 
-			{ /* Pass it to the encoder */
+			{ /* Colorspace convert then Pass it to the encoder as YUY2 */
 				void *p;
 				videoFrame->GetBytes(&p);
 
@@ -148,15 +141,11 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 
 			if (g_videoOutputFile != -1) {
 				videoFrame->GetBytes(&frameBytes);
-				write(g_videoOutputFile, frameBytes,
-				      videoFrame->GetRowBytes() *
-				      videoFrame->GetHeight());
+				write(g_videoOutputFile, frameBytes, videoFrame->GetRowBytes() * videoFrame->GetHeight());
 
 				if (rightEyeFrame) {
 					rightEyeFrame->GetBytes(&frameBytes);
-					write(g_videoOutputFile, frameBytes,
-					      videoFrame->GetRowBytes() *
-					      videoFrame->GetHeight());
+					write(g_videoOutputFile, frameBytes, videoFrame->GetRowBytes() * videoFrame->GetHeight());
 				}
 			}
 		}
@@ -170,24 +159,20 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 	if (audioFrame) {
 		if (g_audioOutputFile != -1) {
 			audioFrame->GetBytes(&audioFrameBytes);
-			write(g_audioOutputFile, audioFrameBytes,
-			      audioFrame->GetSampleFrameCount() *
+			write(g_audioOutputFile, audioFrameBytes, audioFrame->GetSampleFrameCount() *
 			      g_config.m_audioChannels *
 			      (g_config.m_audioSampleDepth / 8));
 		}
 	}
 
-	if (g_config.m_maxFrames > 0 && videoFrame
-	    && g_frameCount >= g_config.m_maxFrames) {
+	if (g_config.m_maxFrames > 0 && videoFrame && g_frameCount >= g_config.m_maxFrames) {
 		time_to_quit = true;
 	}
 
 	return S_OK;
 }
 
-HRESULT DeckLinkCaptureDelegate::
-VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events,
-			IDeckLinkDisplayMode * mode,
+HRESULT DeckLinkCaptureDelegate::VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events, IDeckLinkDisplayMode * mode,
 			BMDDetectedVideoInputFormatFlags formatFlags)
 {
 	// This only gets called if bmdVideoInputEnableFormatDetection was set
@@ -209,8 +194,7 @@ VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events,
 	if (g_deckLinkInput) {
 		g_deckLinkInput->StopStreams();
 
-		result =
-		    g_deckLinkInput->EnableVideoInput(mode->GetDisplayMode(),
+		result = g_deckLinkInput->EnableVideoInput(mode->GetDisplayMode(),
 						      pixelFormat,
 						      g_config.m_inputFlags);
 		if (result != S_OK) {
@@ -273,8 +257,7 @@ int decklink_main(int argc, const char *arv[])
 		goto bail;
 	}
 	// Get the input (capture) interface of the DeckLink device
-	result =
-	    deckLink->QueryInterface(IID_IDeckLinkInput,
+	result = deckLink->QueryInterface(IID_IDeckLinkInput,
 				     (void **)&g_deckLinkInput);
 	if (result != S_OK)
 		goto bail;
@@ -282,13 +265,10 @@ int decklink_main(int argc, const char *arv[])
 	// Get the display mode
 	if (g_config.m_displayModeIndex == -1) {
 		// Check the card supports format detection
-		result =
-		    deckLink->QueryInterface(IID_IDeckLinkAttributes,
+		result = deckLink->QueryInterface(IID_IDeckLinkAttributes,
 					     (void **)&deckLinkAttributes);
 		if (result == S_OK) {
-			result =
-			    deckLinkAttributes->
-			    GetFlag(BMDDeckLinkSupportsInputFormatDetection,
+			result = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection,
 				    &formatDetectionSupported);
 			if (result != S_OK || !formatDetectionSupported) {
 				fprintf(stderr,
@@ -330,8 +310,7 @@ int decklink_main(int argc, const char *arv[])
 			 g_config.m_displayModeIndex);
 	}
 	// Check display mode is supported with given options
-	result =
-	    g_deckLinkInput->DoesSupportVideoMode(displayMode->GetDisplayMode(),
+	result = g_deckLinkInput->DoesSupportVideoMode(displayMode->GetDisplayMode(),
 						  g_config.m_pixelFormat,
 						  bmdVideoInputFlagDefault,
 						  &displayModeSupported, NULL);
@@ -339,16 +318,14 @@ int decklink_main(int argc, const char *arv[])
 		goto bail;
 
 	if (displayModeSupported == bmdDisplayModeNotSupported) {
-		fprintf(stderr,
-			"The display mode %s is not supported with the selected pixel format\n",
+		fprintf(stderr, "The display mode %s is not supported with the selected pixel format\n",
 			displayModeName);
 		goto bail;
 	}
 
 	if (g_config.m_inputFlags & bmdVideoInputDualStream3D) {
 		if (!(displayMode->GetFlags() & bmdDisplayModeSupports3D)) {
-			fprintf(stderr,
-				"The display mode %s is not supported with 3D\n",
+			fprintf(stderr, "The display mode %s is not supported with 3D\n",
 				displayModeName);
 			goto bail;
 		}
@@ -362,8 +339,7 @@ int decklink_main(int argc, const char *arv[])
 
 	// Open output files
 	if (g_config.m_videoOutputFile != NULL) {
-		g_videoOutputFile =
-		    open(g_config.m_videoOutputFile,
+		g_videoOutputFile = open(g_config.m_videoOutputFile,
 			 O_WRONLY | O_CREAT | O_TRUNC, 0664);
 		if (g_videoOutputFile < 0) {
 			fprintf(stderr,
@@ -374,8 +350,7 @@ int decklink_main(int argc, const char *arv[])
 	}
 
 	if (g_config.m_audioOutputFile != NULL) {
-		g_audioOutputFile =
-		    open(g_config.m_audioOutputFile,
+		g_audioOutputFile = open(g_config.m_audioOutputFile,
 			 O_WRONLY | O_CREAT | O_TRUNC, 0664);
 		if (g_audioOutputFile < 0) {
 			fprintf(stderr,
@@ -387,8 +362,7 @@ int decklink_main(int argc, const char *arv[])
 	// Block main thread until signal occurs
 	while (!time_to_quit) {
 		// Start capturing
-		result =
-		    g_deckLinkInput->EnableVideoInput(displayMode->
+		result = g_deckLinkInput->EnableVideoInput(displayMode->
 						      GetDisplayMode(),
 						      g_config.m_pixelFormat,
 						      g_config.m_inputFlags);
@@ -398,8 +372,7 @@ int decklink_main(int argc, const char *arv[])
 			goto bail;
 		}
 
-		result =
-		    g_deckLinkInput->EnableAudioInput(bmdAudioSampleRate48kHz,
+		result = g_deckLinkInput->EnableAudioInput(bmdAudioSampleRate48kHz,
 						      g_config.
 						      m_audioSampleDepth,
 						      g_config.m_audioChannels);
