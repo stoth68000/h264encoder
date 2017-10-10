@@ -4,6 +4,11 @@
  * primary project framework and the decklink.cpp implementation is simplistic.
  * TODO: FLush out the command line interface to pass a wider set of
  * decklink options (such as being able to vary the video mode).
+ *
+ * The Decklink code was originally ripped from the Blackmagic SDK and added
+ * here in as simple a way as possible. For sure, the glue between the core
+ * "encoder" operations callbacks and the blackmagic controlling software
+ * could do with some refinement.
  */
 
 #define __STDC_CONSTANT_MACROS
