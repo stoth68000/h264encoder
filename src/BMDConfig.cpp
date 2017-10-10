@@ -64,7 +64,6 @@ bool BMDConfig::ParseArguments(int argc,  char** argv)
 
 	while ((ch = getopt(argc, argv, "d:?h3c:s:v:a:m:n:p:t:")) != -1)
 	{
-printf("ch = %c\n", ch);
 		switch (ch)
 		{
 			case 'd':
