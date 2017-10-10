@@ -115,7 +115,12 @@ HRESULT DeckLinkCaptureDelegate::VideoInputFrameArrived(IDeckLinkVideoInputFrame
 			if (timecodeString)
 				free((void *)timecodeString);
 
-			{ /* Colorspace convert then Pass it to the encoder as YUY2 */
+			{	/* Colorspace convert then Pass it to the encoder as YUY2.
+				 * TODO: We probably should be doing this in the encoder core.
+				 * Simply Expose a UVYV colorspace, push the frame out to the core
+				 * and let the core manage the complexity on behalf of a number
+				 * of potential UVYV sources.
+				 */
 				void *p;
 				videoFrame->GetBytes(&p);
 
