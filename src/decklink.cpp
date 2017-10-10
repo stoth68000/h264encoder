@@ -239,6 +239,9 @@ int decklink_main(int argc, const char *arv[])
 
 	DeckLinkCaptureDelegate *delegate = NULL;
 
+	/* We're going to re-use getopt in a func, we need to clear prior state. */
+	optind = -1;
+
 	// Process the command line arguments
 	if (!g_config.ParseArguments(argc, (char **)arv)) {
 		g_config.DisplayUsage(exitStatus);
@@ -504,34 +507,16 @@ static void decklink_set_defaults(struct capture_parameters_s *c)
 
 static void decklink_mainloop(void)
 {
-	/* This array construction is hokey.
-	 * I think decklink_main ends up calling getopt
-	 * and has a references to the original argv/argc.
-	 * Simply passing a fully formed argv[] with proper
-	 * arg alignment creates parsing issues in BMDConfig.
-	 * So, for the time being, because time is limited,
-	 * I'm padding the array below to work around the issue.
-	 */
 	char source_nr[26];
 	sprintf(source_nr, "-d %d", encoder_params->source_nr);
-	const char *argsX[] = {
-		"h264encoder",
-		"h264encoder",
-		"h264encoder",
-		"h264encoder",
-		"h264encoder",
-		"h264encoder",
+	const char *argv[] = {
 		"h264encoder",
 		source_nr,  /* input #0 */
-		"-p 0",     /* 8 bit */
 		"-p 0",     /* 8 bit */
 		"-m 12",    /* 1080p60 */
-		source_nr,  /* input #0 */
-		"-p 0",     /* 8 bit */
-		NULL,
 	};
 
-	decklink_main(13, &argsX[0]);
+	decklink_main(sizeof(argv) / sizeof(char *), argv);
 
 	fprintf(stderr, "Decklink stopped main\n");
 }
