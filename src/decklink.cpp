@@ -140,16 +140,16 @@ VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame,
 				void *p;
 				videoFrame->GetBytes(&p);
 
-				uint8_t *f = (uint8_t *)malloc(1920 * 2 * 1088);
+				uint8_t *f = (uint8_t *)malloc(fixedWidth * 2 * fixedHeight);
 
 				encoderSwsContext = sws_getCachedContext(encoderSwsContext,
-					1920, 1080, AV_PIX_FMT_UYVY422,
-					1920, 1080, AV_PIX_FMT_YUYV422, SWS_BICUBIC, NULL, NULL, NULL);
+					fixedWidth, 1080, AV_PIX_FMT_UYVY422,
+					fixedWidth, 1080, AV_PIX_FMT_YUYV422, SWS_BICUBIC, NULL, NULL, NULL);
 
 				uint8_t *src_slices[] = { (uint8_t *)p };
 				uint8_t *dst_slices[] = { f };
-				const int src_slices_stride[] = { 1920 * 2 };
-				const int dst_slices_stride[] = { 1920 * 2 };
+				const int src_slices_stride[] = { fixedWidth * 2 };
+				const int dst_slices_stride[] = { fixedWidth * 2 };
 				sws_scale(encoderSwsContext,
 					src_slices, src_slices_stride,
 					0, 1080,
@@ -433,12 +433,13 @@ int decklink_main(int argc, const char *arv[])
 			usleep(250 * 1000);
 		}
 
-		fprintf(stderr, "Stopping Capture\n");
+		fprintf(stderr, "Decklink stopping hardware\n");
 		g_deckLinkInput->StopStreams();
 		g_deckLinkInput->DisableAudioInput();
 		g_deckLinkInput->DisableVideoInput();
-		fprintf(stderr, "Stopped Capture\n");
+		fprintf(stderr, "Decklink stopped hardware\n");
 	}
+	fprintf(stderr, "Decklink main teardown\n");
 
 bail:
 	if (g_videoOutputFile != 0)
@@ -563,34 +564,7 @@ static void decklink_mainloop(void)
 	//decklink_main(sizeof(args) / sizeof(char *), args);
 	decklink_main(11, &argsX[0]);
 
-	fprintf(stderr, "Stopped main\n");
-
-#if 0
-        /* Imagemagik did a half-assed job at converting BMP to yuyv,
-         * do a byte re-order to fix the colorspace.
-         */
-        unsigned char a;
-        for (unsigned int i = 0; i < sizeof(fixedframe); i += 2) {
-                a = fixedframe[i];
-                fixedframe[i] = fixedframe[i + 1];
-                fixedframe[i + 1] = a;
-        }
-
-        /* calculate the frame processing time and attempt
-         * to sleep for the correct interval before pushing a
-         * new frame.
-         */
-        while (!time_to_quit) {
-                if (p > 33)
-                        p = 33;
-
-                usleep((33 - p) * 1000); /* 33.3ms - 30fps +- */
-
-                gettimeofday(&now, 0);
-                decklink_process_image(fixedframe, sizeof(fixedframe));
-                p = measureElapsedMS(&now);
-        }
-#endif
+	fprintf(stderr, "Decklink stopped main\n");
 }
 
 struct capture_operations_s decklink_ops =
