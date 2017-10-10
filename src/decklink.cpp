@@ -203,14 +203,12 @@ VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events,
 	printf("Video format changed to %s %s\n", displayModeName,
 	       formatFlags & bmdDetectedVideoInputRGB444 ? "RGB" : "YUV");
 
-exit(0);
 	if (displayModeName)
 		free(displayModeName);
 
 	if (g_deckLinkInput) {
 		g_deckLinkInput->StopStreams();
 
-printf("frame changed!!!!!!!!\n");
 		result =
 		    g_deckLinkInput->EnableVideoInput(mode->GetDisplayMode(),
 						      pixelFormat,
@@ -505,12 +503,10 @@ static void decklink_close_device(void)
 
 static int decklink_open_device()
 {
-#if 0
-        if (((fixedWidth * 2) * fixedHeight) != sizeof(fixedframe)) {
+        if ((fixedWidth != 1920) || (fixedHeight != 1088)) {
                 fprintf(stderr, "fixed frame size miss-match\n");
                 exit(1);
         }
-#endif
 
         return 0;
 }
@@ -524,12 +520,17 @@ static void decklink_set_defaults(struct capture_parameters_s *c)
 
 static void decklink_mainloop(void)
 {
-        /* This doesn't guarantee 60fps but its reasonably close for
-         * non-realtime environments with low cpu load.
-         */
-        struct timeval now;
-        unsigned int p = 0;
-
+	/* This array construction is hokey.
+	 * I think decklink_main ends up calling getopt
+	 * and has a references to the original argv/argc.
+	 * Simply passing a fully formed argv[] with proper
+	 * arg alignment creates parsing issues in BMDConfig.
+	 * So, for the time being, because time is limited,
+	 * I'm padding the array below to work around the issue.
+	 *
+	 * I test with:
+	 * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000
+	 */
 	char source_nr[26];
 	sprintf(source_nr, "-d %d", encoder_params->source_nr);
 	const char *argsX[] = {
@@ -547,7 +548,6 @@ static void decklink_mainloop(void)
 		NULL,
 	};
 
-	//decklink_main(sizeof(args) / sizeof(char *), args);
 	decklink_main(11, &argsX[0]);
 
 	fprintf(stderr, "Decklink stopped main\n");

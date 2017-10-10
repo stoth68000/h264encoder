@@ -57,6 +57,7 @@ PKG_CHECK_MODULES([LIBAV], [libavutil libavcodec libavformat])
 PKG_CHECK_MODULES([LIBES2TS], [libes2ts >= 0.4])
 PKG_CHECK_MODULES([LIBIPCVIDEO], [libipcvideo >= 0.6])
 PKG_CHECK_MODULES([X11], [x11])
+PKG_CHECK_MODULES([LIBSWSCALE], [libswscale])
 
 AC_CACHE_SAVE
 
