@@ -383,8 +383,8 @@ int main(int argc, char **argv)
 			}
 			encoder_set_defaults(encoder, &encoder_params);
 			break;
-		case 22:
-			encoder_params.source_nr = atoi(optarg);
+		case 22: /* decklink_index */
+			capture_params.decklink_source_nr = atoi(optarg);
 			break;
 		case 'W':
 			width = atoi(optarg);

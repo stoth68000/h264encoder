@@ -1,8 +1,9 @@
 /* Kernel Labs Inc - 2016/2017
+ *
  * Primitive support for capturing 1920x1080p60 from BlackMagic hardware.
- * Support is limit to 1080p60 as the integration between the
- * primary project framework and the decklink.cpp implementation is simplistic.
- * TODO: FLush out the command line interface to pass a wider set of
+ * Input capture support is limit to 1080p60 and we software scale to any other resolution
+ * as required (--dev-width / --dev-height).
+ * TODO: Flush out the command line interface to pass a wider set of
  * decklink options (such as being able to vary the video mode).
  *
  * The Decklink code was originally ripped from the Blackmagic SDK and added
@@ -15,8 +16,10 @@
  * YUV-to-VAAPI upload function is broken. However, for the time being, 1088
  * serves our purposes fine. TODO: I guess we could YUY2 blackout the last 8 lines.
  *
+ * No frame rate changes are made, intensionally.
+ *
  * Test with:
- * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000 --initial_qp 5
+ * ./h264encoder -M4 -o raw.nals --intra_period 60 --bitrate 20000000 --initial_qp 5 -dev-width 1280 --dev-height 720
  *
  * Convert nals with:
  * ffmpeg -y -i raw.nals -c:v copy -r 60 /tmp/raw.mp4
@@ -46,10 +49,8 @@ static struct SwsContext *encoderSwsContext = NULL;
 //
 static struct encoder_operations_s *encoder = 0;
 static struct encoder_params_s *encoder_params = 0;
-static int ipcFPS = 30;
+static struct capture_parameters_s *capture_params = 0;
 static int ipcResubmitTimeoutMS = 0;
-static int fixedWidth;
-static int fixedHeight;
 
 static int g_videoOutputFile = -1;
 static int g_audioOutputFile = -1;
@@ -130,21 +131,22 @@ HRESULT DeckLinkCaptureDelegate::VideoInputFrameArrived(IDeckLinkVideoInputFrame
 				void *p;
 				videoFrame->GetBytes(&p);
 
-				uint8_t *f = (uint8_t *)malloc(fixedWidth * 2 * fixedHeight);
+				uint8_t *f = (uint8_t *)malloc(capture_params->width * 2 * capture_params->height);
 
 				encoderSwsContext = sws_getCachedContext(encoderSwsContext,
-					fixedWidth, fixedHeight, AV_PIX_FMT_UYVY422,
-					fixedWidth, fixedHeight, AV_PIX_FMT_YUYV422, SWS_BICUBIC, NULL, NULL, NULL);
+					1920, 1080, AV_PIX_FMT_UYVY422,
+					capture_params->width, capture_params->height, AV_PIX_FMT_YUYV422, SWS_BICUBIC, NULL, NULL, NULL);
 
 				uint8_t *src_slices[] = { (uint8_t *)p };
 				uint8_t *dst_slices[] = { f };
-				const int src_slices_stride[] = { fixedWidth * 2 };
-				const int dst_slices_stride[] = { fixedWidth * 2 };
+				const int src_slices_stride[] = { 1920 * 2 };
+				const int dst_slices_stride[] = { capture_params->width * 2 };
+
+				/* Colorspace convert and optionally scale at the same operation */
 				sws_scale(encoderSwsContext,
 					src_slices, src_slices_stride,
-					0, fixedHeight,
+					0, 1080,
 					dst_slices, dst_slices_stride);
-
 			        if (!encoder_encode_frame(encoder, encoder_params, (unsigned char *)f))
 					time_to_quit = 1;
 				free(f);
@@ -404,8 +406,9 @@ int decklink_main(int argc, const char *arv[])
 			usleep(250 * 1000);
 		}
 
-		fprintf(stderr, "Decklink stopping hardware\n");
+		fprintf(stderr, "Decklink stopping streams\n");
 		g_deckLinkInput->StopStreams();
+		fprintf(stderr, "Decklink disabling hardware\n");
 		g_deckLinkInput->DisableAudioInput();
 		g_deckLinkInput->DisableVideoInput();
 		fprintf(stderr, "Decklink stopped hardware\n");
@@ -445,6 +448,7 @@ bail:
 	if (deckLinkIterator != NULL)
 		deckLinkIterator->Release();
 
+	fprintf(stderr, "Decklink main teardown done, ret = %d\n", exitStatus);
 	return exitStatus;
 }
 
@@ -467,17 +471,17 @@ static void decklink_uninit_device(void)
 
 static int decklink_init_device(struct encoder_params_s *p, struct capture_parameters_s *c)
 {
-        c->width = fixedWidth;
-        c->height = fixedHeight;
-        ipcFPS = c->fps;
+	printf("Decklink: User requesting  %dx%d@%dfps, decklink_mode = %d\n", c->width, c->height, c->fps, c->decklink_mode_nr);
+	
         encoder_params = p;
+	capture_params = c;
 
         /* Lets give the timeout a small amount of headroom for a frame to arrive (3ms) */
         /* 30fps input creates a timeout of 36ms or as low as 27.7 fps, before we resumbit a prior frame. */
         printf("%s(%d, %d, %d timeout=%d)\n", __func__,
                 c->width, c->height,
-                ipcFPS, ipcResubmitTimeoutMS);
-        ipcResubmitTimeoutMS = (1000 / ipcFPS) + 3;
+                c->fps, ipcResubmitTimeoutMS);
+        ipcResubmitTimeoutMS = (1000 / c->fps) + 3;
 
         encoder_params->input_fourcc = E_FOURCC_YUY2;
 
@@ -490,31 +494,39 @@ static void decklink_close_device(void)
 
 static int decklink_open_device()
 {
-        if ((fixedWidth != 1920) || (fixedHeight != 1088)) {
-                fprintf(stderr, "fixed frame size miss-match\n");
-                exit(1);
-        }
-
         return 0;
 }
 
 static void decklink_set_defaults(struct capture_parameters_s *c)
 {
 	c->type = CM_DECKLINK;
-	fixedWidth = 1920;
-	fixedHeight = 1088;
+	c->width = 1920;
+	c->height = 1088;
+	c->fps = 60;
+	c->decklink_source_nr = 0; /* Input #0. */
+	c->decklink_mode_nr = 12; /* 1920x1080p60 on a 4K decklink card. */
 }
 
 static void decklink_mainloop(void)
 {
 	char source_nr[26];
-	sprintf(source_nr, "-d %d", encoder_params->source_nr);
+	sprintf(source_nr, "-d %d", capture_params->decklink_source_nr);
+
+	char mode_nr[26];
+	sprintf(mode_nr, "-m %d", capture_params->decklink_mode_nr);
+
 	const char *argv[] = {
 		"h264encoder",
 		source_nr,  /* input #0 */
 		"-p 0",     /* 8 bit */
-		"-m 12",    /* 1080p60 */
+		mode_nr,
 	};
+
+	printf("args: ");
+	for (int i = 0; i < sizeof(argv) / sizeof(char *); i++) {
+		printf("%s ", argv[i]);
+	}
+	printf("\n");
 
 	decklink_main(sizeof(argv) / sizeof(char *), argv);
 

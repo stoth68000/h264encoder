@@ -48,12 +48,23 @@ enum capture_type_e {
 struct capture_parameters_s
 {
 	unsigned int fps;
+
+	/* Typically we're capturing and compressing the same resolution with no scaling.
+	 * However in the decklink case, we specifically built a 1080p60 input that scales
+	 * to whatever output size the user wants. So, be mindfull, thhe width and height here
+	 * in terms of the decklink mode is the OUTPUT requested resolution, not the input size
+	 * as in all other capture inputs.
+	 */
 	unsigned int width;
 	unsigned int height;
 
 	enum capture_type_e type;
 
 	struct capture_v4l_params_s v4l;
+
+	/* Blackmagic / Decklink specific */
+	int decklink_source_nr;
+	int decklink_mode_nr;
 };
 
 struct capture_operations_s
