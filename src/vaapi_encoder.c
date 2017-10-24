@@ -2174,6 +2174,8 @@ static void vaapi_close(struct encoder_params_s *params)
 {
 	encode_thread_terminate = 1;
 	encode_thread_terminated = 0;
+	pthread_cond_signal(&encode_cond);
+
 	while (!encode_thread_terminated)
 		usleep(250 * 1000);
 
