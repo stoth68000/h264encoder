@@ -37,7 +37,8 @@ static int drm_fd = -1;
 static VADisplay
 va_open_display_drm(void)
 {
-    drm_fd = open("/dev/dri/card0", O_RDWR);
+    //drm_fd = open("/dev/dri/card0", O_RDWR);
+    drm_fd = open("/dev/dri/renderD128", O_RDWR);
     if (drm_fd < 0) {
         fprintf(stderr, "error: can't open DRM connection!\n");
         return NULL;
