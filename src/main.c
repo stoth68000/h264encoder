@@ -192,6 +192,7 @@ int main(int argc, char **argv)
 	char *mxc_validate_filename = 0;
 	int mxc_ipport = 0, mxc_endian = 0, mxc_sendmode = 2;
 	enum encoder_type_e compressor = EM_VAAPI;
+	int decklink_source_nr = 0;
 
 	enum payloadMode_e {
 		PAYLOAD_RTP_TS = 0,
@@ -384,7 +385,7 @@ int main(int argc, char **argv)
 			encoder_set_defaults(encoder, &encoder_params);
 			break;
 		case 22: /* decklink_index */
-			capture_params.decklink_source_nr = atoi(optarg);
+			decklink_source_nr = atoi(optarg);
 			break;
 		case 'W':
 			width = atoi(optarg);
@@ -424,6 +425,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	source->set_defaults(&capture_params);
+	capture_params.decklink_source_nr = decklink_source_nr;
 
 	/* */
 	if (V4LFrameRate == 0) {
