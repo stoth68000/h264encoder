@@ -242,7 +242,7 @@ int decklink_main(int argc, const char *arv[])
 	DeckLinkCaptureDelegate *delegate = NULL;
 
 	/* We're going to re-use getopt in a func, we need to clear prior state. */
-	optind = -1;
+	optind = 0;
 
 	// Process the command line arguments
 	if (!g_config.ParseArguments(argc, (char **)arv)) {
