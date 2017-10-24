@@ -416,10 +416,10 @@ int decklink_main(int argc, const char *arv[])
 	fprintf(stderr, "Decklink main teardown\n");
 
 bail:
-	if (g_videoOutputFile != 0)
+	if (g_videoOutputFile != -1)
 		close(g_videoOutputFile);
 
-	if (g_audioOutputFile != 0)
+	if (g_audioOutputFile != -1)
 		close(g_audioOutputFile);
 
 	if (displayModeName != NULL)
