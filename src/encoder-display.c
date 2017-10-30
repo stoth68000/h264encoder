@@ -1301,7 +1301,7 @@ int encoder_display_render_reset(struct encoder_display_context *ctx, unsigned c
 	if ((!ctx) || (!ptr))
 		return -1;
 
-	if ((stride != (720 * 2)) && (stride != (1280 * 2)) && (stride != (1920 * 2)) && (stride != (3840 * 2)))
+	if ((stride != (720 * 2)) && (stride != (960 * 2)) && (stride != (1280 * 2)) && (stride != (1920 * 2)) && (stride != (3840 * 2)))
 		return -1;
 
 	ctx->ptr = ptr;
