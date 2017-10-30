@@ -335,8 +335,15 @@ static void sps_rbsp(struct encoder_params_s *params, bitstream * bs)
 		bitstream_put_ui(bs, 0, 1);	/* chroma_loc_info_present_flag */
 		bitstream_put_ui(bs, 1, 1);	/* timing_info_present_flag */
 		{
-			bitstream_put_ui(bs, 15, 32);
-			bitstream_put_ui(bs, 900, 32);
+			/* Used for a long period of time in production.
+			 * This really translates into 30fps, regardless of the callers
+			 * parameters. Original values were:
+			 * num_units_in_tick: 15
+			 * timescale: 900
+			 * Now properly assign the correct value based in expected framerate.
+			 */
+			bitstream_put_ui(bs, 1, 32);
+			bitstream_put_ui(bs, params->frame_rate * 2, 32);
 			bitstream_put_ui(bs, 1, 1);
 		}
 		bitstream_put_ui(bs, 1, 1);	/* nal_hrd_parameters_present_flag */
